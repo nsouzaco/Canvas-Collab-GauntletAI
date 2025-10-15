@@ -1,0 +1,12 @@
+{
+  "rules": {
+    "sessions": {
+      "$canvasId": {
+        "$userId": {
+          ".read": "auth != null",
+          ".write": "auth != null && auth.uid == $userId"
+        }
+      }
+    }
+  }
+}
