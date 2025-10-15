@@ -11,6 +11,72 @@
 
 ---
 
+## 🤝 **AI-Human Collaboration Workflow & Techniques**
+
+### **Context Management & Session Continuity**
+**Developer Workflow**: Throughout the development process, effective context management was crucial for maintaining development momentum:
+
+- **Summarize Command Usage**: When hitting context limits, the developer utilized the `\summarize` command to condense previous conversation history, then created new chat sessions to continue development without losing critical context
+- **Session Continuity**: This approach allowed for seamless continuation of complex development tasks while maintaining focus on specific issues and features
+- **Context Preservation**: Key architectural decisions, code patterns, and project state were preserved across sessions through strategic summarization
+
+### **Visual Communication & Bug Resolution**
+**Developer Workflow**: Image inputs were strategically used to enhance AI understanding and accelerate bug resolution:
+
+- **Screenshot Analysis**: When encountering UI/UX issues, the developer provided screenshots to help the AI understand the exact visual state and identify problems
+- **Visual Context**: Images helped clarify complex interaction patterns, layout issues, and user experience problems that were difficult to describe in text
+- **Guided Debugging**: Visual inputs enabled more precise identification of bugs and faster implementation of targeted fixes
+- **User Experience Validation**: Screenshots helped verify that implemented solutions matched the intended user experience
+
+### **Iterative Problem-Solving Approach**
+**Developer Workflow**: The development process followed an iterative problem-solving methodology:
+
+1. **Issue Identification**: Clear description of problems encountered
+2. **Root Cause Analysis**: Deep investigation into underlying causes
+3. **Solution Development**: Collaborative design of fixes with AI assistance
+4. **Implementation**: Step-by-step code changes with explanation
+5. **Testing & Validation**: Verification of solutions through testing
+6. **Documentation**: Recording of changes and lessons learned
+
+### **Developer Prompt Examples & Communication Patterns**
+**Developer Communication Style**: The following examples demonstrate effective AI-human collaboration through clear, detailed prompts that guided development:
+
+#### **Example 1: Real-time Synchronization Issue**
+*"Okay, we still haven't fixed it so let's think it through. I see you added logs and it seems that you are updating Firebase. But now let's think about this: when a user has selected a shape and is currently pressing down the mouse in order to keep the object selected and drag it around, while they're moving the shape around and altering the coordinates of the object, it is not reflecting on other users' screens, only when the user finally releases the mouse and consequently the shape. So only the 'final' position of the shape is being represented on the non-editors' screens. Remember, the goal is for all users to see everything real-time. If user A has selected a shape and is currently moving it across the canvas, user B should be able to follow all that movement on their end."*
+
+**Key Elements**: 
+- Clear problem identification with specific user scenario
+- Technical context about Firebase updates and logging
+- Explicit goal statement for real-time collaboration
+- User experience expectation clearly defined
+
+#### **Example 2: Feature Prioritization & Polish**
+*"Now, let's polish our app a bit. Right now we have the presence code that shows where one's cursor is on the canvas. We can comment out that functionality for now and we should focus on the following two things: when an object is selected, another user should not be able to select it. When an object is selected by someone, we should see the user label indicating the user editing it and a border around the object. In addition, when an object is being dragged, I would like to see the movement of that shape in real-time for all users. Let's tackle these changes now in order."*
+
+**Key Elements**:
+- Strategic feature prioritization
+- Clear functional requirements with specific UI expectations
+- Ordered approach to implementation
+- User experience specifications
+
+#### **Example 3: Debugging & Code Understanding**
+*"Unfortunately you have not fixed the issue. On top of that, I have identified another bug: you're also not locking and preventing the object from being selected and edited when a user has already selected that object. I want you to first take the time to fully understand what's going on in the code and then proceed with changes."*
+
+**Key Elements**:
+- Direct feedback on previous attempts
+- Additional issue identification
+- Clear instruction for thorough code analysis before changes
+- Emphasis on understanding before action
+
+**Communication Effectiveness**: These prompts demonstrate:
+- **Specificity**: Clear, detailed descriptions of problems and requirements
+- **Context**: Technical background and user scenarios
+- **Direction**: Clear instructions for AI assistance approach
+- **Feedback**: Direct communication about what's working and what isn't
+- **Prioritization**: Strategic focus on most important issues first
+
+---
+
 ## 🧠 **AI-Assisted Project Planning & Architecture**
 
 ### **Initial Product Requirements Development**
