@@ -1,6 +1,5 @@
 {
-  "name": "canvas-collab-gauntlet-ai",
-  "buildCommand": "cd collabcanvas && npm run build",
+  "buildCommand": "npm run build",
   "outputDirectory": "collabcanvas/dist",
   "framework": "vite",
   "rewrites": [
