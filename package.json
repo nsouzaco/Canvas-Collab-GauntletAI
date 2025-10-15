@@ -1,4 +1,12 @@
 {
+  "name": "canvas-collab-gauntletai",
+  "version": "1.0.0",
+  "description": "Real-time collaborative canvas application",
+  "scripts": {
+    "build": "cd collabcanvas && npm run build",
+    "dev": "cd collabcanvas && npm run dev",
+    "install-deps": "cd collabcanvas && npm install"
+  },
   "dependencies": {
     "firebase": "^12.4.0",
     "konva": "^10.0.2",
