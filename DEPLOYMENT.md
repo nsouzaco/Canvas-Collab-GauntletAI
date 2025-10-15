@@ -18,13 +18,13 @@ Your app won't work properly until you add the Firebase environment variables to
 Add each of these environment variables (copy from your `.env` file):
 
 ```
-VITE_FIREBASE_API_KEY=AIzaSyD0u-YikxSs4MplgOVf1IWBoETkzsa06s0
-VITE_FIREBASE_AUTH_DOMAIN=collabcanvas-71e95.firebaseapp.com
-VITE_FIREBASE_PROJECT_ID=collabcanvas-71e95
-VITE_FIREBASE_STORAGE_BUCKET=collabcanvas-71e95.firebasestorage.app
-VITE_FIREBASE_MESSAGING_SENDER_ID=624493173361
-VITE_FIREBASE_APP_ID=1:624493173361:web:3442414f26cc35fd3a59d0
-VITE_FIREBASE_DATABASE_URL=https://collabcanvas-71e95-default-rtdb.firebaseio.com
+VITE_FIREBASE_API_KEY=your_api_key_here
+VITE_FIREBASE_AUTH_DOMAIN=your_project_id.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=your_project_id
+VITE_FIREBASE_STORAGE_BUCKET=your_project_id.firebasestorage.app
+VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+VITE_FIREBASE_APP_ID=your_app_id
+VITE_FIREBASE_DATABASE_URL=https://your_project_id-default-rtdb.firebaseio.com
 ```
 
 **Important**: 
