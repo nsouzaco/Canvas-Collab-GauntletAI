@@ -6,16 +6,40 @@ const ShapeToolbar = () => {
   const { addShape, stageRef } = useCanvas();
 
   const handleAddShape = async (shapeType) => {
-    // Add shape at random position within canvas bounds
+    // Add shape at strategic position in mid-top center area
     const CANVAS_WIDTH = Math.min(1200, window.innerWidth - 300);
     const CANVAS_HEIGHT = 1000;
     const SHAPE_SIZE = 100; // Default shape size
     
-    // Generate random position within canvas bounds
-    const randomX = Math.random() * (CANVAS_WIDTH - SHAPE_SIZE);
-    const randomY = Math.random() * (CANVAS_HEIGHT - SHAPE_SIZE);
+    // Define the target area: mid-top center with some randomization
+    const TARGET_CENTER_X = CANVAS_WIDTH / 2;
+    const TARGET_CENTER_Y = CANVAS_HEIGHT * 0.3; // 30% from top (mid-top)
     
-    await addShape(shapeType, { x: randomX, y: randomY });
+    // Create a more natural spread pattern
+    const OFFSET_RANGE = 100; // Maximum offset from center
+    const SPREAD_ANGLE = Math.random() * 2 * Math.PI; // Random angle for spread
+    const SPREAD_DISTANCE = Math.random() * OFFSET_RANGE; // Random distance from center
+    
+    // Calculate offset using polar coordinates for more natural distribution
+    const randomOffsetX = Math.cos(SPREAD_ANGLE) * SPREAD_DISTANCE;
+    const randomOffsetY = Math.sin(SPREAD_ANGLE) * SPREAD_DISTANCE;
+    
+    // Add a small time-based offset to create a subtle spiral pattern
+    const timeOffset = (Date.now() % 10000) / 10000; // 0 to 1 based on time
+    const spiralOffsetX = Math.cos(timeOffset * 2 * Math.PI) * 20; // Small spiral
+    const spiralOffsetY = Math.sin(timeOffset * 2 * Math.PI) * 20;
+    
+    // Calculate final position with bounds checking
+    const finalX = Math.max(0, Math.min(
+      CANVAS_WIDTH - SHAPE_SIZE, 
+      TARGET_CENTER_X + randomOffsetX + spiralOffsetX
+    ));
+    const finalY = Math.max(0, Math.min(
+      CANVAS_HEIGHT - SHAPE_SIZE, 
+      TARGET_CENTER_Y + randomOffsetY + spiralOffsetY
+    ));
+    
+    await addShape(shapeType, { x: finalX, y: finalY });
   };
 
   return (
