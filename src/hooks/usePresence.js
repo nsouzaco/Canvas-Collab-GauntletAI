@@ -20,6 +20,8 @@ export const usePresence = () => {
   const { currentUser } = useAuth();
   const [onlineUsers, setOnlineUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+  
+  console.log('usePresence hook called, currentUser:', currentUser);
 
   // Set user online when component mounts
   useEffect(() => {
@@ -40,6 +42,7 @@ export const usePresence = () => {
     if (!currentUser) return;
 
     const unsubscribe = subscribeToPresence((users) => {
+      console.log('usePresence - received users:', users);
       setOnlineUsers(users);
       setLoading(false);
     });

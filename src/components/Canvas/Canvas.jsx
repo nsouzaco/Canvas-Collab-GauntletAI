@@ -8,6 +8,7 @@ import { CANVAS_WIDTH, CANVAS_HEIGHT, VIEWPORT_WIDTH, VIEWPORT_HEIGHT, MIN_ZOOM,
 import Shape from './Shape';
 import InlineTextEditor from './InlineTextEditor';
 import Cursor from '../Collaboration/Cursor';
+import CursorDebug from '../Debug/CursorDebug';
 
 const GRID_SIZE = 20;
 
@@ -48,6 +49,7 @@ const Canvas = () => {
   const { shapes, selectedId, stageRef, selectShape, deselectAll, updateShape, deleteShape, loading, lockShape, unlockShape } = useCanvas();
   const { currentUser } = useAuth();
   const { onlineUsers } = usePresence();
+  console.log('Canvas - onlineUsers:', onlineUsers);
   const gridLayerRef = useRef();
   const containerRef = useRef();
   
@@ -61,7 +63,13 @@ const Canvas = () => {
   const [editingText, setEditingText] = useState('');
 
   // Initialize cursor tracking
+  console.log('Canvas - stagePos:', stagePos, 'scale:', scale);
   const { handleMouseMove } = useCursors(stagePos, scale);
+  
+  // Simple test to see if mouse events are working
+  const handleSimpleMouseMove = (e) => {
+    console.log('Simple mouse move detected!', e);
+  };
 
   // Ensure grid layer stays at the bottom
   useEffect(() => {
@@ -258,7 +266,7 @@ const Canvas = () => {
         onDragEnd={handleStageDrag}
         onClick={handleStageClick}
         onTap={handleStageClick}
-        onMouseMove={handleMouseMove}
+        onMouseMove={handleSimpleMouseMove}
       >
         {/* Grid Layer - Always at the bottom */}
         <Layer ref={gridLayerRef}>
@@ -316,16 +324,22 @@ const Canvas = () => {
           {/* Render other users' cursors */}
           {onlineUsers
             .filter(user => user.userId !== currentUser?.uid)
-            .map((user) => (
-              <Cursor
-                key={user.userId}
-                user={user}
-                scale={scale}
-                stagePos={stagePos}
-              />
-            ))}
+            .map((user) => {
+              console.log('Rendering cursor for user:', user);
+              return (
+                <Cursor
+                  key={user.userId}
+                  user={user}
+                  scale={scale}
+                  stagePos={stagePos}
+                />
+              );
+            })}
         </Layer>
       </Stage>
+
+      {/* Debug Component */}
+      <CursorDebug />
 
       {/* Inline Text Editor */}
       {editingTextId && (() => {
