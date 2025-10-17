@@ -214,23 +214,6 @@ const AIChatInput = ({ onShapeCreate, isVisible, onToggle }) => {
         </button>
       </form>
 
-      {/* API Status */}
-      {apiStatus && (
-        <div className={`mt-4 p-3 rounded-lg text-xs ${
-          apiStatus === 'connected' 
-            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
-            : 'bg-amber-50 text-amber-700 border border-amber-200'
-        }`}>
-          <div className="flex items-center gap-2">
-            <div className={`w-2 h-2 rounded-full ${
-              apiStatus === 'connected' ? 'bg-emerald-500' : 'bg-amber-500'
-            }`}></div>
-            <span className="font-medium">
-              {apiStatus === 'connected' ? 'OpenAI Connected' : 'Mock Mode'}
-            </span>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

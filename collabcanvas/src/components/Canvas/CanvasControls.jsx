@@ -13,10 +13,6 @@ const CanvasControls = () => {
   // Check if any shape is being edited (locked)
   const anyShapeBeingEdited = shapes.some(shape => shape.lockedBy);
   const editingShapes = shapes.filter(shape => shape.lockedBy);
-  
-  // Check if any shape is selected
-  const anyShapeSelected = shapes.some(shape => shape.selectedBy);
-  const selectedShapes = shapes.filter(shape => shape.selectedBy);
 
   const isOfflineMode = isOffline || presenceOffline;
 
@@ -43,51 +39,27 @@ const CanvasControls = () => {
       </div>
       
       {/* Activity Indicators */}
-      {(anyShapeSelected || anyShapeBeingEdited) && (
-        <div className="p-4 border-b border-gray-100 space-y-3">
-          {/* Show selected shapes */}
-          {anyShapeSelected && (
-            <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
-                <h4 className="text-xs font-medium text-emerald-800">Selected</h4>
-              </div>
-              <div className="space-y-1">
-                {selectedShapes.map(shape => {
-                  const user = onlineUsers.find(u => u.userId === shape.selectedBy);
-                  const userName = user ? user.displayName : 'Unknown User';
-                  return (
-                    <div key={shape.id} className="text-xs text-emerald-700 flex items-center gap-2">
-                      <div className="w-1.5 h-1.5 bg-emerald-400 rounded-full"></div>
-                      {userName}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-          
+      {anyShapeBeingEdited && (
+        <div className="p-4 border-b border-gray-100">
           {/* Global editing indicator */}
-          {anyShapeBeingEdited && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                <h4 className="text-xs font-medium text-blue-800">Editing</h4>
-              </div>
-              <div className="space-y-1">
-                {editingShapes.map(shape => {
-                  const user = onlineUsers.find(u => u.userId === shape.lockedBy);
-                  const userName = user ? user.displayName : 'Unknown User';
-                  return (
-                    <div key={shape.id} className="text-xs text-blue-700 flex items-center gap-2">
-                      <div className="w-1.5 h-1.5 bg-blue-400 rounded-full"></div>
-                      {userName}
-                    </div>
-                  );
-                })}
-              </div>
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+              <h4 className="text-xs font-medium text-blue-800">Editing</h4>
             </div>
-          )}
+            <div className="space-y-1">
+              {editingShapes.map(shape => {
+                const user = onlineUsers.find(u => u.userId === shape.lockedBy);
+                const userName = user ? user.displayName : 'Unknown User';
+                return (
+                  <div key={shape.id} className="text-xs text-blue-700 flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 bg-blue-400 rounded-full"></div>
+                    {userName}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
       )}
       
