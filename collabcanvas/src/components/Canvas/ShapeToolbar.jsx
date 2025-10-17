@@ -1,9 +1,10 @@
 import React from 'react';
 import { Square, Circle, Type, MousePointer } from 'lucide-react';
 import { useCanvas } from '../../contexts/CanvasContext';
+import ColorPicker from './ColorPicker';
 
 const ShapeToolbar = () => {
-  const { addShape, stageRef, setCurrentTool, deselectAll } = useCanvas();
+  const { addShape, stageRef, setCurrentTool, deselectAll, selectedId, shapes, updateShape } = useCanvas();
 
   const handleToolSwitch = async (tool) => {
     // Release any locks when switching tools
@@ -57,6 +58,18 @@ const ShapeToolbar = () => {
     await addShape(shapeType, { x: finalX, y: finalY });
   };
 
+  // Handle color change for selected shape
+  const handleColorChange = async (color) => {
+    if (selectedId) {
+      console.log(`🎨 Changing color of shape ${selectedId} to ${color}`);
+      await updateShape(selectedId, { fill: color });
+    }
+  };
+
+  // Get the selected shape's current color
+  const selectedShape = selectedId ? shapes.find(shape => shape.id === selectedId) : null;
+  const selectedColor = selectedShape?.fill || '#3b82f6';
+
   return (
     <div className="flex items-center bg-white rounded-lg shadow-md border border-gray-200 mb-3">
       {/* Cursor/Selection Tool */}
@@ -107,11 +120,21 @@ const ShapeToolbar = () => {
           await handleToolSwitch('text');
           await handleAddShape('text');
         }}
-        className="flex items-center justify-center w-10 h-10 rounded-r-lg hover:bg-gray-100 transition-colors duration-200 group"
+        className="flex items-center justify-center w-10 h-10 hover:bg-gray-100 transition-colors duration-200 group"
         title="Add Text"
       >
         <Type className="w-5 h-5 text-gray-700 group-hover:text-blue-600" />
       </button>
+
+      {/* Separator */}
+      <div className="w-px h-6 bg-gray-300"></div>
+
+      {/* Color Picker */}
+      <ColorPicker
+        selectedColor={selectedColor}
+        onColorChange={handleColorChange}
+        disabled={!selectedId}
+      />
     </div>
   );
 };

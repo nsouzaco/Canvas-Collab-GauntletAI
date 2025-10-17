@@ -367,8 +367,8 @@ const Shape = ({
       {/* Delete Button - Show when selected (Outside rotating Group) */}
       {isSelected && (
         <Group
-          x={shape.x + shape.width + 60}
-          y={shape.y + shape.height - 8}
+          x={shape.x + shape.width + 20}
+          y={shape.y + shape.height - 1}
           onClick={(e) => {
             e.cancelBubble = true;
             onDelete(shape.id);
