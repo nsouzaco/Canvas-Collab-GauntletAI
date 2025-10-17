@@ -4,12 +4,21 @@
   "description": "Real-time collaborative canvas application",
   "scripts": {
     "dev": "cd collabcanvas && npm run dev",
+    "build": "cd collabcanvas && npm run build",
+    "preview": "cd collabcanvas && npm run preview",
     "install-deps": "cd collabcanvas && npm install"
   },
   "dependencies": {
+    "@tailwindcss/postcss": "^4.1.14",
+    "@vitejs/plugin-react": "^5.0.4",
     "firebase": "^12.4.0",
     "konva": "^10.0.2",
-    "react-konva": "^19.0.10"
+    "lucide-react": "^0.546.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-konva": "^19.0.10",
+    "typescript": "^5.9.3",
+    "vite": "^7.1.10"
   },
   "devDependencies": {
     "autoprefixer": "^10.4.21",
