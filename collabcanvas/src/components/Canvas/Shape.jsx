@@ -383,9 +383,6 @@ const Shape = ({
             y={0}
             radius={12}
             fill="#ef4444"
-            shadowColor="rgba(0, 0, 0, 0.3)"
-            shadowBlur={4}
-            shadowOffset={{ x: 0, y: 2 }}
           />
           <Text
             x={0}
