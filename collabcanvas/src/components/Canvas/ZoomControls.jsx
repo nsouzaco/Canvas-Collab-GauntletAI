@@ -1,37 +1,75 @@
 import React from 'react';
 import { ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
 import { useCanvas } from '../../contexts/CanvasContext';
-import { VIEWPORT_WIDTH, VIEWPORT_HEIGHT, CANVAS_WIDTH, CANVAS_HEIGHT } from '../../utils/constants';
+import { getViewportDimensions, getCanvasDimensions, MIN_ZOOM, MAX_ZOOM } from '../../utils/constants';
 
 const ZoomControls = () => {
   const { stageRef } = useCanvas();
 
+  const smoothZoom = (targetScale) => {
+    const stage = stageRef.current;
+    if (!stage) return;
+
+    const viewportDimensions = getViewportDimensions();
+    const canvasDimensions = getCanvasDimensions();
+    
+    // Get current scale and position
+    const currentScale = stage.scaleX();
+    const currentPos = stage.position();
+    
+    // Calculate center of viewport
+    const centerX = viewportDimensions.width / 2;
+    const centerY = viewportDimensions.height / 2;
+    
+    // Calculate the point in canvas coordinates that should stay at the center
+    const canvasCenterX = (centerX - currentPos.x) / currentScale;
+    const canvasCenterY = (centerY - currentPos.y) / currentScale;
+    
+    // Calculate new position to keep the center point in the same screen position
+    const newPos = {
+      x: centerX - canvasCenterX * targetScale,
+      y: centerY - canvasCenterY * targetScale,
+    };
+    
+    // Apply smooth transition
+    stage.scaleX(targetScale);
+    stage.scaleY(targetScale);
+    stage.x(newPos.x);
+    stage.y(newPos.y);
+  };
+
   const handleZoomIn = () => {
     const stage = stageRef.current;
     if (stage) {
-      const newScale = Math.min(3, stage.scaleX() * 1.2);
-      stage.scaleX(newScale);
-      stage.scaleY(newScale);
+      const currentScale = stage.scaleX();
+      const newScale = Math.min(MAX_ZOOM, currentScale * 1.2);
+      smoothZoom(newScale);
     }
   };
 
   const handleZoomOut = () => {
     const stage = stageRef.current;
     if (stage) {
-      const newScale = Math.max(0.1, stage.scaleX() / 1.2);
-      stage.scaleX(newScale);
-      stage.scaleY(newScale);
+      const currentScale = stage.scaleX();
+      const newScale = Math.max(MIN_ZOOM, currentScale / 1.2);
+      smoothZoom(newScale);
     }
   };
 
   const handleResetView = () => {
     const stage = stageRef.current;
     if (stage) {
+      const viewportDimensions = getViewportDimensions();
+      const canvasDimensions = getCanvasDimensions();
+      
+      // Reset to centered position
+      const centerX = (viewportDimensions.width - canvasDimensions.width) / 2;
+      const centerY = (viewportDimensions.height - canvasDimensions.height) / 2;
+      
       stage.scaleX(1);
       stage.scaleY(1);
-      // Reset to centered position
-      stage.x((VIEWPORT_WIDTH - CANVAS_WIDTH) / 2);
-      stage.y((VIEWPORT_HEIGHT - CANVAS_HEIGHT) / 2);
+      stage.x(centerX);
+      stage.y(centerY);
     }
   };
 

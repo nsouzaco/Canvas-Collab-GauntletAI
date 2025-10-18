@@ -6,7 +6,7 @@ import { usePresence } from '../../hooks/usePresence';
 import { useCursors } from '../../hooks/useCursors';
 import { useOptimizedPositioning } from '../../hooks/useOptimizedPositioning';
 import { getSmoothRemotePosition, clearAllRemotePositionCaches, clearRemotePositionCache } from '../../utils/remotePositionInterpolation';
-import { CANVAS_WIDTH, CANVAS_HEIGHT, VIEWPORT_WIDTH, VIEWPORT_HEIGHT, MIN_ZOOM, MAX_ZOOM } from '../../utils/constants';
+import { getCanvasDimensions, getViewportDimensions, MIN_ZOOM, MAX_ZOOM } from '../../utils/constants';
 import Shape from './Shape';
 import InlineTextEditor from './InlineTextEditor';
 import Cursor from '../Collaboration/Cursor';
@@ -15,15 +15,15 @@ import PerformanceDashboard from '../Debug/PerformanceDashboard';
 const GRID_SIZE = 20;
 
 // Grid component to render grid lines
-const Grid = () => {
+const Grid = ({ canvasWidth, canvasHeight }) => {
   const lines = [];
   
   // Vertical lines
-  for (let i = 0; i <= CANVAS_WIDTH / GRID_SIZE; i++) {
+  for (let i = 0; i <= canvasWidth / GRID_SIZE; i++) {
     lines.push(
       <Line
         key={`v${i}`}
-        points={[i * GRID_SIZE, 0, i * GRID_SIZE, CANVAS_HEIGHT]}
+        points={[i * GRID_SIZE, 0, i * GRID_SIZE, canvasHeight]}
         stroke="#e0e0e0"
         strokeWidth={0.5}
         listening={false}
@@ -32,11 +32,11 @@ const Grid = () => {
   }
   
   // Horizontal lines
-  for (let j = 0; j <= CANVAS_HEIGHT / GRID_SIZE; j++) {
+  for (let j = 0; j <= canvasHeight / GRID_SIZE; j++) {
     lines.push(
       <Line
         key={`h${j}`}
-        points={[0, j * GRID_SIZE, CANVAS_WIDTH, j * GRID_SIZE]}
+        points={[0, j * GRID_SIZE, canvasWidth, j * GRID_SIZE]}
         stroke="#e0e0e0"
         strokeWidth={0.5}
         listening={false}
@@ -71,10 +71,14 @@ const Canvas = () => {
   const gridLayerRef = useRef();
   const containerRef = useRef();
   
-  // Center the canvas in the viewport initially
+  // Get responsive viewport and canvas dimensions
+  const [viewportDimensions, setViewportDimensions] = useState(getViewportDimensions());
+  const [canvasDimensions, setCanvasDimensions] = useState(getCanvasDimensions());
+  
+  // Position canvas to show both left and right boundaries
   const [stagePos, setStagePos] = useState({ 
-    x: (VIEWPORT_WIDTH - CANVAS_WIDTH) / 2, 
-    y: (VIEWPORT_HEIGHT - CANVAS_HEIGHT) / 2 
+    x: 0, // Start at left edge
+    y: (viewportDimensions.height - canvasDimensions.height) / 2 // Center vertically
   });
   
   const [scale, setScale] = useState(1);
@@ -85,6 +89,33 @@ const Canvas = () => {
 
   const { handleMouseMove } = useCursors(stagePos, scale);
   
+  // Handle window resize for responsive canvas
+  useEffect(() => {
+    const handleResize = () => {
+      const newViewportDimensions = getViewportDimensions();
+      const newCanvasDimensions = getCanvasDimensions();
+      setViewportDimensions(newViewportDimensions);
+      setCanvasDimensions(newCanvasDimensions);
+      
+      // Position canvas to show both boundaries after resize
+      setStagePos({
+        x: 0, // Start at left edge
+        y: (newViewportDimensions.height - newCanvasDimensions.height) / 2 // Center vertically
+      });
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Update stage position when viewport dimensions change
+  useEffect(() => {
+    setStagePos({
+      x: 0, // Start at left edge
+      y: (viewportDimensions.height - canvasDimensions.height) / 2 // Center vertically
+    });
+  }, [viewportDimensions, canvasDimensions]);
+
   // Cleanup remote position caches on unmount
   useEffect(() => {
     return () => {
@@ -130,36 +161,38 @@ const Canvas = () => {
           mouseY >= rect.top && mouseY <= rect.bottom) {
         e.preventDefault();
         
-        // Trigger zoom through Konva
+        // Only zoom if no shape is selected (no locks)
+        if (selectedId) return;
+        
+        // Smooth zoom with center focus
         if (stageRef.current) {
           const stage = stageRef.current;
           const scaleBy = 1.1;
           const oldScale = stage.scaleX();
           
-          // Calculate pointer position relative to stage
-          const stageRect = stage.content.getBoundingClientRect();
-          const pointerX = mouseX - stageRect.left;
-          const pointerY = mouseY - stageRect.top;
-          
-          const mousePointTo = {
-            x: (pointerX - stagePos.x) / oldScale,
-            y: (pointerY - stagePos.y) / oldScale,
-          };
-          
+          // Calculate new scale
           const newScale = e.deltaY > 0 ? oldScale * scaleBy : oldScale / scaleBy;
           const clampedScale = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, newScale));
           
-          setScale(clampedScale);
+          // Calculate center of viewport for smooth zoom
+          const centerX = viewportDimensions.width / 2;
+          const centerY = viewportDimensions.height / 2;
           
+          // Calculate the point in canvas coordinates that should stay at the center
+          const canvasCenterX = (centerX - stagePos.x) / oldScale;
+          const canvasCenterY = (centerY - stagePos.y) / oldScale;
+          
+          // Calculate new position to keep the center point in the same screen position
           const newPos = {
-            x: pointerX - mousePointTo.x * clampedScale,
-            y: pointerY - mousePointTo.y * clampedScale,
+            x: centerX - canvasCenterX * clampedScale,
+            y: centerY - canvasCenterY * clampedScale,
           };
           
+          // Apply smooth transition
+          setScale(clampedScale);
           setStagePos(newPos);
         }
       }
-      // If mouse is outside, do nothing and let the browser handle scroll
     };
 
     container.addEventListener('wheel', handleNativeWheel, { passive: false });
@@ -167,7 +200,7 @@ const Canvas = () => {
     return () => {
       container.removeEventListener('wheel', handleNativeWheel);
     };
-  }, [stagePos, MIN_ZOOM, MAX_ZOOM]);
+  }, [stagePos, viewportDimensions, selectedId, MIN_ZOOM, MAX_ZOOM]);
 
   // Handle stage drag (panning) - only when not dragging a shape
   const handleStageDrag = (e) => {
@@ -327,11 +360,11 @@ const Canvas = () => {
   }
 
   return (
-    <div ref={containerRef} className="relative">
+    <div ref={containerRef} className="relative w-full h-full">
       <Stage
         ref={stageRef}
-        width={VIEWPORT_WIDTH}
-        height={VIEWPORT_HEIGHT}
+        width={viewportDimensions.width}
+        height={viewportDimensions.height}
         scaleX={scale}
         scaleY={scale}
         x={stagePos.x}
@@ -348,8 +381,8 @@ const Canvas = () => {
           <Rect
             x={0}
             y={0}
-            width={CANVAS_WIDTH}
-            height={CANVAS_HEIGHT}
+            width={canvasDimensions.width}
+            height={canvasDimensions.height}
             fill="#ffffff"
             onClick={handleStageClick}
             onTap={handleStageClick}
@@ -357,14 +390,14 @@ const Canvas = () => {
           />
           
           {/* Grid lines */}
-          <Grid />
+          <Grid canvasWidth={canvasDimensions.width} canvasHeight={canvasDimensions.height} />
           
           {/* Canvas boundary indicator */}
           <Rect
             x={0}
             y={0}
-            width={CANVAS_WIDTH}
-            height={CANVAS_HEIGHT}
+            width={canvasDimensions.width}
+            height={canvasDimensions.height}
             fill="transparent"
             stroke="#3b82f6"
             strokeWidth={1}

@@ -51,19 +51,24 @@ function App() {
         <div className="py-3">
           <Navbar />
         </div>
-        <div className="flex-1 flex pb-20 pl-8 pr-4 gap-3">
-          {/* Left sidebar with online users */}
-          <div className="flex-shrink-0 pt-12">
+        
+        {/* Full-width canvas area */}
+        <div className="flex-1 relative">
+          <Canvas />
+          
+          {/* Floating UI Elements */}
+          <div className="absolute top-4 left-4 z-10">
             <CanvasControls />
           </div>
           
-          {/* Canvas area with toolbar */}
-          <div className="flex flex-col items-center">
+          {/* Shape Toolbar - Center Bottom */}
+          <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-10">
             <ShapeToolbar />
-            <div className="relative flex-shrink-0">
-              <Canvas />
-              <ZoomControls />
-            </div>
+          </div>
+          
+          {/* Zoom Controls - Bottom Right */}
+          <div className="absolute bottom-4 right-4 z-10">
+            <ZoomControls />
           </div>
         </div>
         

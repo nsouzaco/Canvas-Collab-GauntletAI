@@ -17,13 +17,32 @@ export const setUserOnline = async (userId, displayName, cursorColor) => {
     };
     
     await set(userRef, userData);
-    console.log('User set online successfully');
+    console.log('✅ User set online successfully');
 
     // Set user as offline when they disconnect
     onDisconnect(userRef).remove();
   } catch (error) {
-    console.error('Error setting user online:', error);
+    console.error('❌ Error setting user online:', error);
     throw new Error('Failed to set user online. Please check your connection.');
+  }
+};
+
+// Refresh user presence (for reconnection scenarios)
+export const refreshUserPresence = async (userId, displayName, cursorColor) => {
+  try {
+    const userRef = ref(rtdb, `sessions/${CANVAS_ID}/${userId}`);
+    
+    const updateData = {
+      lastSeen: Date.now(),
+      displayName,
+      cursorColor
+    };
+    
+    await update(userRef, updateData);
+    console.log('🔄 User presence refreshed successfully');
+  } catch (error) {
+    console.error('❌ Error refreshing user presence:', error);
+    // Don't throw error for refresh - it's not critical
   }
 };
 

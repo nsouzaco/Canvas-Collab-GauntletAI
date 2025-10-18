@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { setUserOnline, setUserOffline, subscribeToPresence } from '../services/presence';
+import { setUserOnline, setUserOffline, subscribeToPresence, refreshUserPresence } from '../services/presence';
 import { getDisplayName } from '../services/auth';
 import { PresencePersistence, UserPreferencesPersistence } from '../utils/persistence';
 
@@ -68,11 +68,17 @@ export const usePresence = () => {
     return unsubscribe;
   }, [currentUser]);
 
-  // Handle online/offline status
+  // Handle online/offline status and presence refresh
   useEffect(() => {
     const handleOnline = () => {
       console.log('🌐 Presence connection restored');
       setIsOffline(false);
+      // Refresh presence when connection is restored
+      if (currentUser) {
+        const displayName = getDisplayName(currentUser);
+        const cursorColor = generateUserColor(currentUser.uid);
+        refreshUserPresence(currentUser.uid, displayName, cursorColor);
+      }
     };
 
     const handleOffline = () => {
@@ -80,14 +86,38 @@ export const usePresence = () => {
       setIsOffline(true);
     };
 
+    // Handle visibility change (when user returns to tab)
+    const handleVisibilityChange = () => {
+      if (!document.hidden && currentUser) {
+        console.log('👁️ User became active, refreshing presence');
+        const displayName = getDisplayName(currentUser);
+        const cursorColor = generateUserColor(currentUser.uid);
+        refreshUserPresence(currentUser.uid, displayName, cursorColor);
+      }
+    };
+
+
+    // Heartbeat system - refresh presence every 30 seconds
+    const heartbeatInterval = setInterval(() => {
+      if (currentUser && !document.hidden) {
+        console.log('💓 Heartbeat: refreshing presence');
+        const displayName = getDisplayName(currentUser);
+        const cursorColor = generateUserColor(currentUser.uid);
+        refreshUserPresence(currentUser.uid, displayName, cursorColor);
+      }
+    }, 30000); // 30 seconds
+
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      clearInterval(heartbeatInterval);
     };
-  }, []);
+  }, [currentUser]);
 
   return {
     onlineUsers,

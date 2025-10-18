@@ -17,8 +17,8 @@ const ShapeToolbar = () => {
     await deselectAll();
     
     // Add shape at strategic position in mid-top center area with truly random positioning
-    const CANVAS_WIDTH = Math.min(1200, window.innerWidth - 300);
-    const CANVAS_HEIGHT = 1000;
+    const CANVAS_WIDTH = Math.min(1200, window.innerWidth - 40); // Use responsive width
+    const CANVAS_HEIGHT = Math.max(1000, window.innerHeight - 160); // Use responsive height
     const SHAPE_SIZE = 100; // Default shape size
     
     // Define the target area: mid-top center with randomization
