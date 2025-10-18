@@ -2,6 +2,21 @@ import { CANVAS_WIDTH, CANVAS_HEIGHT } from './constants';
 import { getColorHex, getSizeDimensions, calculatePosition } from './shapeCommandHandler';
 
 /**
+ * Simple text handling - trust the LLM to do the heavy lifting
+ * @param {string} llmText - Text extracted by the LLM
+ * @returns {string} Text content to use
+ */
+const handleTextContent = (llmText) => {
+  // Trust the LLM's text extraction - it's much smarter than regex patterns
+  if (llmText && llmText.trim() && llmText !== 'Text') {
+    return llmText.trim();
+  }
+  
+  // Fallback to default
+  return 'Text';
+};
+
+/**
  * Find shapes by type and color
  * @param {Array} shapes - Array of all shapes
  * @param {string} type - Shape type (rectangle, circle, text)
@@ -46,9 +61,6 @@ export const findTargetShape = (shapes, target) => {
 export const processAIOperation = async (parsedCommand, shapes, operations) => {
   const { operation } = parsedCommand;
   
-  console.log('🤖 Processing AI operation:', operation, parsedCommand);
-  console.log('🤖 Available shapes:', shapes.length);
-  console.log('🤖 Available operations:', Object.keys(operations));
 
   switch (operation) {
     case 'create':
@@ -74,7 +86,6 @@ export const processAIOperation = async (parsedCommand, shapes, operations) => {
 const handleCreateOperation = async (parsedCommand, operations) => {
   const { type, color, position, size, text } = parsedCommand;
   
-  console.log('🎨 Create operation - parsed command:', { type, color, position, size, text });
   
   // Validate required fields
   if (!type || !['rectangle', 'circle', 'text'].includes(type)) {
@@ -84,7 +95,6 @@ const handleCreateOperation = async (parsedCommand, operations) => {
   // For AI-created shapes, we'll use the same positioning logic as manual creation
   // but we need to handle color and text content separately
   
-  console.log('🤖 AI: Using manual shape creation logic for positioning');
   
   // Get color
   const fillColor = getColorHex(color);
@@ -124,12 +134,6 @@ const handleCreateOperation = async (parsedCommand, operations) => {
     TARGET_CENTER_Y + randomOffsetY + extraRandomY
   ));
   
-  console.log('🤖 AI: Using manual-style positioning:', {
-    position: { x: finalX, y: finalY },
-    angle: SPREAD_ANGLE,
-    distance: SPREAD_DISTANCE,
-    extraRandom: { x: extraRandomX, y: extraRandomY }
-  });
   
   // Create shape data with manual positioning but AI-specified color and text
   const shapeData = {
@@ -143,20 +147,14 @@ const handleCreateOperation = async (parsedCommand, operations) => {
     strokeWidth: 1
   };
   
-  // Add text content for text shapes
-  if (type === 'text' && text) {
-    shapeData.text = text;
-    console.log('📝 Adding AI-specified text content:', text);
-  } else if (type === 'text') {
-    // Default text if none provided
-    shapeData.text = 'Text';
-    console.log('📝 No text provided, using default:', shapeData.text);
+  // Simple text handling - trust the LLM to do the smart extraction
+  if (type === 'text') {
+    shapeData.text = handleTextContent(text);
   }
   
-  console.log('🎨 AI: Creating shape with manual positioning + AI styling:', shapeData);
   
   // Create the shape using the same method as manual creation
-  const shapeId = await operations.createShape(shapeData.type, {
+  const shapeCreationData = {
     x: shapeData.x,
     y: shapeData.y,
     width: shapeData.width,
@@ -165,14 +163,16 @@ const handleCreateOperation = async (parsedCommand, operations) => {
     stroke: shapeData.stroke,
     strokeWidth: shapeData.strokeWidth,
     text: shapeData.text
-  });
+  };
   
-  console.log('🎨 AI: Shape created with ID:', shapeId);
+  
+  const shapeId = await operations.createShape(shapeData.type, shapeCreationData);
+  
   
   return {
     operation: 'create',
     shapeId,
-    message: `Created ${color} ${type}`
+    message: `Created ${color || 'text'} ${type}${shapeData.text ? ` with text "${shapeData.text}"` : ''}`
   };
 };
 
@@ -192,7 +192,6 @@ const handleMoveOperation = async (parsedCommand, shapes, operations) => {
   // Calculate new position
   const newPosition = calculatePosition(position);
   
-  console.log('🎨 Moving shape:', targetShape.id, 'to position:', newPosition);
   
   // Move the shape
   await operations.moveShape(targetShape.id, newPosition.x, newPosition.y);
@@ -217,7 +216,6 @@ const handleDeleteOperation = async (parsedCommand, shapes, operations) => {
     throw new Error(`No ${target.color} ${target.type} found to delete`);
   }
 
-  console.log('🎨 Deleting shape:', targetShape.id);
   
   // Delete the shape
   await operations.deleteShape(targetShape.id);
@@ -245,7 +243,6 @@ const handleResizeOperation = async (parsedCommand, shapes, operations) => {
   // Get new size dimensions
   const newSize = getSizeDimensions(size?.description, targetShape.type);
   
-  console.log('🎨 Resizing shape:', targetShape.id, 'to size:', newSize);
   
   // Resize the shape
   await operations.resizeShape(targetShape.id, {

@@ -6,7 +6,6 @@ const CANVAS_ID = 'global-canvas-v1';
 // Set user as online
 export const setUserOnline = async (userId, displayName, cursorColor) => {
   try {
-    console.log('Setting user online:', { userId, displayName, cursorColor });
     const userRef = ref(rtdb, `sessions/${CANVAS_ID}/${userId}`);
     
     const userData = {
@@ -42,7 +41,6 @@ export const setUserOffline = async (userId) => {
 // Update cursor position
 export const updateCursorPosition = async (userId, x, y) => {
   try {
-    console.log('Updating cursor position:', { userId, x, y });
     const userRef = ref(rtdb, `sessions/${CANVAS_ID}/${userId}`);
     
     const updateData = {
@@ -53,7 +51,6 @@ export const updateCursorPosition = async (userId, x, y) => {
     
     // Use update to only change cursor position, preserve other data
     await update(userRef, updateData);
-    console.log('Cursor position updated successfully');
   } catch (error) {
     console.error('Error updating cursor position:', error);
     // Don't throw error for cursor updates - they're not critical
@@ -62,18 +59,16 @@ export const updateCursorPosition = async (userId, x, y) => {
 
 // Subscribe to presence changes
 export const subscribeToPresence = (callback) => {
-  console.log('subscribeToPresence called');
   const presenceRef = ref(rtdb, `sessions/${CANVAS_ID}`);
   
   return onValue(presenceRef, (snapshot) => {
-    console.log('Firebase presence data received:', snapshot.val());
+
     const data = snapshot.val();
     const users = data ? Object.entries(data).map(([userId, userData]) => ({
       userId,
       ...userData
     })) : [];
     
-    console.log('Processed users:', users);
     callback(users);
   });
 };

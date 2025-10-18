@@ -86,14 +86,6 @@ export const getSizeDimensions = (sizeDesc, shapeType) => {
  * @returns {Object} Calculated position {x, y}
  */
 export const calculatePosition = (position) => {
-  console.log('🔍 DEBUG: Position calculation input:', { 
-    position, 
-    CANVAS_WIDTH, 
-    CANVAS_HEIGHT, 
-    VIEWPORT_WIDTH, 
-    VIEWPORT_HEIGHT 
-  });
-  console.log('🔍 DEBUG: Position calculation - position type:', typeof position, 'position value:', position);
   
   // Use the same stage position calculation as Canvas.jsx
   const stagePos = {
@@ -101,18 +93,11 @@ export const calculatePosition = (position) => {
     y: (VIEWPORT_HEIGHT - CANVAS_HEIGHT) / 2
   };
   
-  console.log('🔍 DEBUG: Stage position (same as Canvas.jsx):', stagePos);
   
   // Calculate positions relative to the canvas center
   const canvasCenterX = CANVAS_WIDTH / 2;
   const canvasCenterY = CANVAS_HEIGHT / 2;
   
-  console.log('🔍 DEBUG: Canvas center calculated:', { 
-    canvasCenterX, 
-    canvasCenterY,
-    'CANVAS_WIDTH': CANVAS_WIDTH,
-    'CANVAS_HEIGHT': CANVAS_HEIGHT
-  });
   
   if (!position) {
     // Use the EXACT same logic as manual shape creation (ShapeToolbar.jsx)
@@ -164,7 +149,6 @@ export const calculatePosition = (position) => {
 
   // If absolute position is provided, use it
   if (position.x !== undefined && position.y !== undefined) {
-    console.log('📍 Using absolute position:', { x: position.x, y: position.y });
     return { x: position.x, y: position.y };
   }
 
@@ -175,14 +159,12 @@ export const calculatePosition = (position) => {
       x: canvasCenterX, 
       y: canvasCenterY 
     };
-    console.log('📍 No relative position, using canvas center:', centerPos);
     return centerPos;
   }
 
   const margin = 50; // Margin from edges
   
   let calculatedPos;
-  console.log('🔍 DEBUG: Processing relative position:', relative);
   switch (relative.toLowerCase()) {
     case 'center':
       // Use the same canvas dimensions as manual shape creation
@@ -192,11 +174,7 @@ export const calculatePosition = (position) => {
         x: CENTER_CANVAS_WIDTH / 2, 
         y: CENTER_CANVAS_HEIGHT / 2
       };
-      console.log('🔍 DEBUG: Center case - using manual-style center:', calculatedPos);
-      console.log('🔍 DEBUG: Center case - manual canvas dimensions:', { 
-        width: CENTER_CANVAS_WIDTH, 
-        height: CENTER_CANVAS_HEIGHT 
-      });
+
       break;
     
     case 'top-left':
@@ -294,7 +272,6 @@ export const calculatePosition = (position) => {
       };
   }
   
-  console.log('📍 Calculated position for', relative, ':', calculatedPos);
   return calculatedPos;
 };
 
@@ -317,11 +294,7 @@ export const processShapeCommand = (parsedCommand) => {
 
   // Get color
   const fillColor = getColorHex(color);
-  console.log('🎨 Color parsing:', { 
-    originalColor: color, 
-    parsedColor: fillColor,
-    colorMap: COLOR_MAP[color?.toLowerCase()?.trim()]
-  });
+
   
   // Get size
   const sizeDimensions = getSizeDimensions(size?.description, type);

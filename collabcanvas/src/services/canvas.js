@@ -73,6 +73,11 @@ export const createShape = async (shapeData) => {
       lockedBy: null
     };
 
+    // Only add text field for text shapes and when text is defined
+    if (shapeData.type === 'text' && shapeData.text !== undefined) {
+      shape.text = shapeData.text;
+    }
+
     const updatedShapes = [...currentShapes, shape];
     
     await setDoc(canvasRef, {
@@ -88,7 +93,6 @@ export const createShape = async (shapeData) => {
 
 // Update an existing shape
 export const updateShape = async (shapeId, updates) => {
-  console.log('updateShape called with:', { shapeId, updates });
   
   const canvasRef = doc(db, 'canvas', CANVAS_ID);
   
@@ -111,7 +115,6 @@ export const updateShape = async (shapeId, updates) => {
       : shape
   );
   
-  console.log('Updated shapes:', updatedShapes.find(s => s.id === shapeId));
   
   try {
     await setDoc(canvasRef, {
@@ -119,7 +122,6 @@ export const updateShape = async (shapeId, updates) => {
       shapes: updatedShapes,
       lastUpdated: serverTimestamp()
     });
-    console.log('Firebase update successful');
   } catch (error) {
     console.error('Firebase update failed:', error);
     throw error;
@@ -275,7 +277,7 @@ export const subscribeToShapePosition = (shapeId, callback) => {
   return unsubscribe;
 };
 
-// Update shape position in real-time (for live dragging)
+// Update shape position in real-time (for live dragging) with optimized throttling
 export const updateShapePosition = async (shapeId, x, y, userId) => {
   const positionRef = ref(rtdb, `positions/${shapeId}`);
   
@@ -302,11 +304,22 @@ export const clearShapePosition = async (shapeId) => {
   }
 };
 
-// Subscribe to all real-time position updates
+// Subscribe to all real-time position updates with optimized handling
 export const subscribeToAllPositions = (callback) => {
   const positionsRef = ref(rtdb, 'positions');
+  let lastUpdateTime = 0;
+  const updateThrottle = 16; // ~60 FPS
   
   const unsubscribe = onValue(positionsRef, (snapshot) => {
+    const currentTime = Date.now();
+    
+    // Throttle updates to prevent excessive re-renders
+    if (currentTime - lastUpdateTime < updateThrottle) {
+      return;
+    }
+    
+    lastUpdateTime = currentTime;
+    
     if (snapshot.exists()) {
       const positions = snapshot.val();
       callback(positions);

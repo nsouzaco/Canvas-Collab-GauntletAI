@@ -102,7 +102,6 @@ export const CanvasPersistence = {
   loadCanvasState() {
     const state = PersistentStorage.getItem(STORAGE_KEYS.CANVAS_STATE);
     if (state && state.shapes) {
-      console.log('📦 Loaded cached canvas state:', state.shapes.length, 'shapes');
       return state;
     }
     return null;

@@ -48,7 +48,7 @@ export const parseShapeCommand = async (command) => {
               "height": number,
               "description": "small|medium|large"
             },
-            "text": "text content if type is text",
+            "text": "extracted text content if type is text - be smart about extracting meaningful text from user input",
             "confidence": 0.0-1.0
           }
           
@@ -101,6 +101,14 @@ export const parseShapeCommand = async (command) => {
           - Support relative positions: "top right", "center", "bottom left", "left", "right", "up", "down"
           - Support size descriptions: "small", "medium", "large", "bigger", "smaller"
           - Support common color names: red, blue, green, yellow, orange, purple, pink, etc.
+          - For TEXT shapes: Intelligently extract text content from user input. Look for:
+            * Quoted text: "Hello World", 'Welcome', \`Code\`
+            * Text after keywords: "write Hello", "add text Welcome", "create text Meeting Notes"
+            * Text in context: "rectangle with text Data", "circle saying Results"
+            * Simple text: "text Hello World", "label My Label"
+            * Text in parentheses: "(Important Notice)"
+            * Short inputs without shape keywords: "Hello" → treat as text content
+          - Be smart about text extraction - understand user intent and extract meaningful content
           - Return confidence score based on command clarity
           - If command is unclear, return error message`
         },

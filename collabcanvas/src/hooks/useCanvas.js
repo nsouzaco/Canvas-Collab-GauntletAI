@@ -31,7 +31,6 @@ export const useCanvas = () => {
     // Try to load cached canvas state first
     const cachedState = CanvasPersistence.loadCanvasState();
     if (cachedState && cachedState.shapes) {
-      console.log('📦 Loading cached canvas state on mount');
       setShapes(cachedState.shapes);
       setLastSyncTime(cachedState.metadata?.lastSaved || null);
     }
@@ -60,12 +59,10 @@ export const useCanvas = () => {
   // Handle online/offline status
   useEffect(() => {
     const handleOnline = () => {
-      console.log('🌐 Connection restored');
       setIsOffline(false);
     };
 
     const handleOffline = () => {
-      console.log('📴 Connection lost - entering offline mode');
       setIsOffline(true);
     };
 
@@ -118,7 +115,7 @@ export const useCanvas = () => {
     let shapeData;
     if (isFullShapeData) {
       // AI provided full shape data - use it as-is but ensure required fields
-      console.log('🔍 DEBUG: useCanvas - AI shape data received:', shapeDataOrPosition);
+
       shapeData = {
         id: `shape_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         type,
@@ -129,10 +126,9 @@ export const useCanvas = () => {
         fill: shapeDataOrPosition.fill || getShapeColor(type),
         stroke: shapeDataOrPosition.stroke || '#E5E7EB',
         strokeWidth: shapeDataOrPosition.strokeWidth || 1,
-        text: shapeDataOrPosition.text || (type === 'text' ? 'Text' : undefined),
+        ...(type === 'text' && { text: shapeDataOrPosition.text || 'Text' }),
         createdBy: currentUser.uid
       };
-      console.log('🔍 DEBUG: useCanvas - final shape data for Firebase:', shapeData);
     } else {
       // Manual creation - use defaults
       const position = shapeDataOrPosition;
@@ -144,14 +140,13 @@ export const useCanvas = () => {
         width: 100,
         height: 100,
         fill: getShapeColor(type),
-        text: type === 'text' ? 'Text' : undefined,
+        ...(type === 'text' && { text: 'Text' }),
         createdBy: currentUser.uid
       };
     }
 
     // If offline, add to offline queue and update local state
     if (isOffline) {
-      console.log('📴 Offline mode: Queuing shape creation');
       OfflineQueue.addAction({
         type: 'CREATE_SHAPE',
         data: shapeData
@@ -280,7 +275,7 @@ export const useCanvas = () => {
     }
   }, [currentUser]);
 
-  // Update real-time position during drag
+  // Update real-time position during drag with improved throttling
   const updateRealTimePosition = useCallback(async (shapeId, x, y) => {
     if (!currentUser) return;
 

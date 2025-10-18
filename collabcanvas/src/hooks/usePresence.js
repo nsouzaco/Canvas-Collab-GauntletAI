@@ -23,7 +23,6 @@ export const usePresence = () => {
   const [loading, setLoading] = useState(true);
   const [isOffline, setIsOffline] = useState(false);
   
-  console.log('usePresence hook called, currentUser:', currentUser);
 
   // Load cached presence data on mount
   useEffect(() => {
@@ -31,7 +30,6 @@ export const usePresence = () => {
 
     const cachedUsers = PresencePersistence.loadPresenceCache();
     if (cachedUsers.length > 0) {
-      console.log('👥 Loading cached presence data');
       setOnlineUsers(cachedUsers);
     }
   }, [currentUser]);
@@ -59,7 +57,6 @@ export const usePresence = () => {
     if (!currentUser) return;
 
     const unsubscribe = subscribeToPresence((users) => {
-      console.log('usePresence - received users:', users);
       setOnlineUsers(users);
       setLoading(false);
       setIsOffline(false);

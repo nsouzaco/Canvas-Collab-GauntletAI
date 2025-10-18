@@ -4,10 +4,13 @@ import { useCanvas } from '../../contexts/CanvasContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePresence } from '../../hooks/usePresence';
 import { useCursors } from '../../hooks/useCursors';
+import { useOptimizedPositioning } from '../../hooks/useOptimizedPositioning';
+import { getSmoothRemotePosition, clearAllRemotePositionCaches, clearRemotePositionCache } from '../../utils/remotePositionInterpolation';
 import { CANVAS_WIDTH, CANVAS_HEIGHT, VIEWPORT_WIDTH, VIEWPORT_HEIGHT, MIN_ZOOM, MAX_ZOOM } from '../../utils/constants';
 import Shape from './Shape';
 import InlineTextEditor from './InlineTextEditor';
 import Cursor from '../Collaboration/Cursor';
+import PerformanceDashboard from '../Debug/PerformanceDashboard';
 
 const GRID_SIZE = 20;
 
@@ -64,7 +67,7 @@ const Canvas = () => {
   } = useCanvas();
   const { currentUser } = useAuth();
   const { onlineUsers } = usePresence();
-  console.log('Canvas - onlineUsers:', onlineUsers);
+  const { startDrag, updateDragPosition, endDrag } = useOptimizedPositioning();
   const gridLayerRef = useRef();
   const containerRef = useRef();
   
@@ -74,38 +77,35 @@ const Canvas = () => {
     y: (VIEWPORT_HEIGHT - CANVAS_HEIGHT) / 2 
   });
   
-  console.log('🔍 DEBUG: Canvas - Stage position calculated:', {
-    stagePos,
-    VIEWPORT_WIDTH,
-    VIEWPORT_HEIGHT,
-    CANVAS_WIDTH,
-    CANVAS_HEIGHT,
-    'stageOffsetX': (VIEWPORT_WIDTH - CANVAS_WIDTH) / 2,
-    'stageOffsetY': (VIEWPORT_HEIGHT - CANVAS_HEIGHT) / 2
-  });
   const [scale, setScale] = useState(1);
   const [editingTextId, setEditingTextId] = useState(null);
   const [editingText, setEditingText] = useState('');
+  const [showPerformanceDashboard, setShowPerformanceDashboard] = useState(false);
   
-  // Real-time position throttling
-  const positionUpdateTimeout = useRef(null);
-  
-  // Debug text editing state
-  console.log('📝 Text editing state:', { editingTextId, editingText });
 
-  // Initialize cursor tracking
-  console.log('Canvas - stagePos:', stagePos, 'scale:', scale);
   const { handleMouseMove } = useCursors(stagePos, scale);
   
-  // Cleanup timeouts on unmount
+  // Cleanup remote position caches on unmount
   useEffect(() => {
     return () => {
-      if (positionUpdateTimeout.current) {
-        clearTimeout(positionUpdateTimeout.current);
-      }
+      clearAllRemotePositionCaches();
     };
   }, []);
-  
+
+  // Clean up remote position caches when shapes are no longer being moved
+  useEffect(() => {
+    const currentTime = Date.now();
+    const timeout = 2000; // 2 seconds timeout for remote movements
+    
+    Object.entries(realTimePositions).forEach(([shapeId, position]) => {
+      if (position.updatedBy !== currentUser?.uid) {
+        // Check if this position is stale (no updates for 2 seconds)
+        if (currentTime - position.timestamp > timeout) {
+          clearRemotePositionCache(shapeId, position.updatedBy);
+        }
+      }
+    });
+  }, [realTimePositions, currentUser]);
 
   // Ensure grid layer stays at the bottom
   useEffect(() => {
@@ -203,41 +203,32 @@ const Canvas = () => {
     // Shape should already be locked from selection, but ensure it's locked
     await lockShape(shapeId);
     
+    // Start optimized drag tracking
+    startDrag(shapeId);
+    
     // Disable stage dragging while dragging a shape
     const stage = e.target.getStage();
     stage.draggable(false);
   };
 
-  // Handle shape drag move - real-time position updates
+  // Handle shape drag move - optimized real-time position updates
   const handleShapeDragMove = (e) => {
     e.cancelBubble = true;
     const shapeId = e.target.id();
     const newPos = e.target.position();
     
-    // Throttle real-time position updates (every 50ms)
-    if (positionUpdateTimeout.current) {
-      clearTimeout(positionUpdateTimeout.current);
-    }
-    
-    positionUpdateTimeout.current = setTimeout(() => {
-      updateRealTimePosition(shapeId, newPos.x, newPos.y);
-    }, 30); // Reduced from 50ms to 30ms for smoother updates
+    // Use optimized positioning with interpolation
+    updateDragPosition(shapeId, newPos.x, newPos.y);
   };
 
-  // Handle shape drag
+  // Handle shape drag end - optimized cleanup
   const handleShapeDragEnd = async (e) => {
     e.cancelBubble = true;
     const shapeId = e.target.id();
     const newPos = e.target.position();
     
-    // Clear any pending real-time position updates
-    if (positionUpdateTimeout.current) {
-      clearTimeout(positionUpdateTimeout.current);
-      positionUpdateTimeout.current = null;
-    }
-    
-    // Clear real-time position from Realtime DB
-    await clearRealTimePosition(shapeId);
+    // End optimized drag tracking
+    await endDrag(shapeId);
     
     // Update final position in Firestore
     try {
@@ -264,14 +255,14 @@ const Canvas = () => {
 
   // Handle text edit
   const handleTextEdit = (shapeId) => {
-    console.log(`📝 Text edit requested for shape ${shapeId}`);
+    console.log(`📝 Text edit requested for shape ${shapeId}`)
     const shape = shapes.find(s => s.id === shapeId);
     if (shape && shape.type === 'text') {
-      console.log(`📝 Starting text edit for shape ${shapeId} with text: "${shape.text || 'Text'}"`);
+      console.log(`📝 Starting text edit for shape ${shapeId} with text: "${shape.text || 'Text'}"`)
       setEditingTextId(shapeId);
       setEditingText(shape.text || 'Text');
     } else {
-      console.log(`❌ Text edit failed: shape not found or not text type`, { shape, shapeId });
+      console.log(`❌ Text edit faied: shape not found or not text type`, { shape, shapeId });
     }
   };
 
@@ -295,9 +286,7 @@ const Canvas = () => {
   // Handle AI operations (create, move, delete, resize)
   const handleAIOperation = async (parsedCommand) => {
     try {
-      console.log('🎨 Canvas: Executing AI operation with command:', parsedCommand);
       const result = await executeAIOperation(parsedCommand);
-      console.log('🎨 Canvas: AI operation completed:', result);
       return result;
     } catch (error) {
       console.error('Error executing AI operation:', error);
@@ -313,6 +302,11 @@ const Canvas = () => {
       }
       if (e.key === 'Escape') {
         deselectAll();
+      }
+      // Toggle performance dashboard with Ctrl+P
+      if (e.ctrlKey && e.key === 'p') {
+        e.preventDefault();
+        setShowPerformanceDashboard(prev => !prev);
       }
     };
 
@@ -386,10 +380,16 @@ const Canvas = () => {
             // Get real-time position if available
             const realTimePos = realTimePositions[shape.id];
             const isBeingMovedByOther = realTimePos && realTimePos.updatedBy !== currentUser?.uid;
-            const displayShape = realTimePos ? {
+            
+            // Get smooth interpolated position only for remote users' movements
+            const smoothRemotePos = realTimePos ? 
+              getSmoothRemotePosition(shape.id, realTimePos, currentUser?.uid) : null;
+            
+            // Use smooth position for remote movements, immediate position for local dragging
+            const displayShape = smoothRemotePos ? {
               ...shape,
-              x: realTimePos.x,
-              y: realTimePos.y
+              x: smoothRemotePos.x,
+              y: smoothRemotePos.y
             } : shape;
             
             return (
@@ -419,7 +419,6 @@ const Canvas = () => {
           {onlineUsers
             .filter(user => user.userId !== currentUser?.uid)
             .map((user) => {
-              console.log('Rendering cursor for user:', user);
               return (
                 <Cursor
                   key={user.userId}
@@ -455,6 +454,9 @@ const Canvas = () => {
       })()}
 
       {/* AI Chat Input - moved to sidebar */}
+      
+      {/* Performance Dashboard */}
+      <PerformanceDashboard isVisible={showPerformanceDashboard} />
     </div>
   );
 };

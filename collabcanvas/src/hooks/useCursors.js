@@ -40,7 +40,6 @@ export const useCursors = (stagePos, scale) => {
     const canvasX = (pointer.x - stagePos.x) / scale;
     const canvasY = (pointer.y - stagePos.y) / scale;
 
-    console.log('Mouse moved to:', { canvasX, canvasY, stagePos, scale });
     setCursorPosition({ x: canvasX, y: canvasY });
     throttledUpdateCursor(canvasX, canvasY);
   }, [currentUser, throttledUpdateCursor, stagePos, scale]);

@@ -58,9 +58,7 @@ const AIChatInput = ({ onShapeCreate, isVisible, onToggle }) => {
     setError('');
 
     try {
-      console.log('🤖 AI Chat: Processing command:', input.trim());
       const parsedCommand = await parseShapeCommand(input.trim());
-      console.log('🤖 AI Chat: Parsed command:', parsedCommand);
       
       if (parsedCommand.error) {
         setError(parsedCommand.error);
@@ -73,8 +71,7 @@ const AIChatInput = ({ onShapeCreate, isVisible, onToggle }) => {
       //   return;
       // }
 
-      // Call the AI operation handler
-      console.log('🤖 AI Chat: Executing operation with command:', parsedCommand);
+      // Call the AI operation handler - LLM handles text extraction intelligently
       const result = await onShapeCreate(parsedCommand);
       
       // Show success message

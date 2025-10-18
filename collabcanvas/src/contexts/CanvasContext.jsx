@@ -60,13 +60,9 @@ export const CanvasProvider = ({ children }) => {
   const selectShape = async (id) => {
     // Check if the shape is already locked by another user
     const shape = shapes.find(s => s.id === id);
-    console.log(`🎯 Attempting to select shape ${id}:`, {
-      shape: shape ? { id: shape.id, lockedBy: shape.lockedBy, selectedBy: shape.selectedBy } : null,
-      currentUser: currentUser?.uid
-    });
+
     
     if (shape && shape.lockedBy && shape.lockedBy !== currentUser?.uid) {
-      console.log(`🚫 Shape ${id} is locked by ${shape.lockedBy}, blocking selection for ${currentUser?.uid}`);
       return; // Don't allow selection if locked by another user
     }
     
@@ -89,11 +85,9 @@ export const CanvasProvider = ({ children }) => {
     }
     
     // Lock the shape first, then select it
-    console.log(`🔒 Locking shape ${id} for user ${currentUser.uid}`);
     await lockShapeInFirebase(id, currentUser.uid);
     // Set local state immediately after lock is applied
     setSelectedId(id);
-    console.log(`✅ Selecting shape ${id} for user ${currentUser.uid}`);
     await selectShapeInFirebase(id);
   };
 
@@ -103,11 +97,9 @@ export const CanvasProvider = ({ children }) => {
       shape.lockedBy === currentUser?.uid
     );
     
-    console.log(`🔓 Deselecting all shapes for user ${currentUser?.uid}:`, currentUserShapes.map(s => s.id));
     
     for (const shape of currentUserShapes) {
       try {
-        console.log(`🔓 Unlocking shape ${shape.id}`);
         await unlockShapeInFirebase(shape.id);
       } catch (error) {
         console.error('Error unlocking shape:', error);
@@ -135,7 +127,6 @@ export const CanvasProvider = ({ children }) => {
       // Define available operations
       const operations = {
         createShape: async (type, shapeData) => {
-          console.log('🎨 CanvasContext: Creating shape with data:', { type, shapeData });
           const shapeId = await addShapeToFirebase(type, shapeData);
           if (shapeId) {
             // Automatically select and lock the newly created shape
@@ -154,10 +145,9 @@ export const CanvasProvider = ({ children }) => {
         }
       };
 
-      // Process the AI operation
+      // Process the AI operation - LLM handles text extraction intelligently
       const result = await processAIOperation(parsedCommand, shapes, operations);
       
-      console.log(`🤖 AI operation completed:`, result);
       return result;
     } catch (error) {
       console.error('Error executing AI operation:', error);

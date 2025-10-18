@@ -172,17 +172,6 @@ const Shape = ({
   const isLockedByAnotherUser = shape.lockedBy && shape.lockedBy !== currentUser?.uid;
   const isLockedByCurrentUser = shape.lockedBy === currentUser?.uid;
   
-  // Debug logging for lock status
-  console.log(`🔍 Shape ${shape.id} status:`, {
-    lockedBy: shape.lockedBy,
-    selectedBy: shape.selectedBy,
-    currentUser: currentUser?.uid,
-    isLockedByAnotherUser,
-    isLockedByCurrentUser,
-    editingUser,
-    selectedByUser,
-    isSelected: isSelected
-  });
   
 
   // Shape rendering with rotation support
@@ -364,8 +353,8 @@ const Shape = ({
         </Group>
       )}
 
-      {/* Delete Button - Show when selected (Outside rotating Group) */}
-      {isSelected && (
+      {/* Delete Button - Show when selected but hidden during dragging for cleaner UX */}
+      {isSelected && !isDragging && (
         <Group
           x={shape.x + shape.width + 20}
           y={shape.y + shape.height - 1}
@@ -399,8 +388,8 @@ const Shape = ({
         </Group>
       )}
 
-      {/* ─────────────── Transformer ─────────────── */}
-      {isSelected && (
+      {/* ─────────────── Transformer (Resize Handles) ─────────────── */}
+      {isSelected && !isDragging && (
         <Transformer
           ref={transformerRef}
           boundBoxFunc={(oldBox, newBox) => {

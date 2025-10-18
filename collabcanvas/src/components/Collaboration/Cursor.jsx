@@ -3,17 +3,14 @@ import { Group, Circle, Text, Path, Rect } from 'react-konva';
 
 const Cursor = ({ user, scale, stagePos }) => {
   // Debug logging
-  console.log('Cursor component - user data:', user);
   
   // Check if cursor position data exists (including 0,0 positions)
   if (user.cursorX === undefined || user.cursorY === undefined) {
-    console.log('Cursor component - missing position data');
     return null;
   }
 
   // Check if displayName exists
   if (!user.displayName) {
-    console.log('Cursor component - missing displayName');
     return null;
   }
 
