@@ -4,7 +4,7 @@ import { getFirestore } from 'firebase/firestore';
 import { getDatabase } from 'firebase/database';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyD0u-YikxSs4MplgOVf1IWBoETkzsa06s0",
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: "collabcanvas-71e95.firebaseapp.com",
   databaseURL: "https://collabcanvas-71e95-default-rtdb.firebaseio.com",
   projectId: "collabcanvas-71e95",
