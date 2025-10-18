@@ -93,37 +93,36 @@ export const calculatePosition = (position) => {
     VIEWPORT_WIDTH, 
     VIEWPORT_HEIGHT 
   });
+  console.log('🔍 DEBUG: Position calculation - position type:', typeof position, 'position value:', position);
   
-  // Calculate the Stage offset (how much the Stage is shifted to center the canvas)
-  const stageOffsetX = (VIEWPORT_WIDTH - CANVAS_WIDTH) / 2;
-  const stageOffsetY = (VIEWPORT_HEIGHT - CANVAS_HEIGHT) / 2;
+  // Use the same stage position calculation as Canvas.jsx
+  const stagePos = {
+    x: (VIEWPORT_WIDTH - CANVAS_WIDTH) / 2,
+    y: (VIEWPORT_HEIGHT - CANVAS_HEIGHT) / 2
+  };
   
-  console.log('🔍 DEBUG: Stage offset calculated:', { 
-    stageOffsetX, 
-    stageOffsetY 
-  });
+  console.log('🔍 DEBUG: Stage position (same as Canvas.jsx):', stagePos);
   
-  // Calculate positions relative to the viewport center, but account for Stage offset
-  // The Stage is positioned at (stageOffsetX, stageOffsetY), so we need to adjust
-  const viewportCenterX = VIEWPORT_WIDTH / 2;
-  const viewportCenterY = VIEWPORT_HEIGHT / 2;
+  // Calculate positions relative to the canvas center
+  const canvasCenterX = CANVAS_WIDTH / 2;
+  const canvasCenterY = CANVAS_HEIGHT / 2;
   
-  console.log('🔍 DEBUG: Viewport center calculated:', { 
-    viewportCenterX, 
-    viewportCenterY,
-    'VIEWPORT_WIDTH': VIEWPORT_WIDTH,
-    'VIEWPORT_HEIGHT': VIEWPORT_HEIGHT
+  console.log('🔍 DEBUG: Canvas center calculated:', { 
+    canvasCenterX, 
+    canvasCenterY,
+    'CANVAS_WIDTH': CANVAS_WIDTH,
+    'CANVAS_HEIGHT': CANVAS_HEIGHT
   });
   
   if (!position) {
-    // Use truly random positioning for each shape creation
-    const CANVAS_WIDTH = Math.min(1200, window.innerWidth - 300);
-    const CANVAS_HEIGHT = 1000;
+    // Use the EXACT same logic as manual shape creation (ShapeToolbar.jsx)
+    const MANUAL_CANVAS_WIDTH = Math.min(1200, window.innerWidth - 300);
+    const MANUAL_CANVAS_HEIGHT = 1000;
     const SHAPE_SIZE = 100; // Default shape size
     
-    // Define the target area: mid-top center with randomization
-    const TARGET_CENTER_X = CANVAS_WIDTH / 2;
-    const TARGET_CENTER_Y = CANVAS_HEIGHT * 0.3; // 30% from top (mid-top)
+    // Define the target area: mid-top center with randomization (same as manual)
+    const TARGET_CENTER_X = MANUAL_CANVAS_WIDTH / 2;
+    const TARGET_CENTER_Y = MANUAL_CANVAS_HEIGHT * 0.3; // 30% from top (mid-top)
     
     // Create a truly random spread pattern - different for each shape
     const OFFSET_RANGE = 150; // Increased range for more variety
@@ -140,11 +139,11 @@ export const calculatePosition = (position) => {
     
     // Calculate final position with bounds checking
     const finalX = Math.max(50, Math.min(
-      CANVAS_WIDTH - SHAPE_SIZE - 50, 
+      MANUAL_CANVAS_WIDTH - SHAPE_SIZE - 50, 
       TARGET_CENTER_X + randomOffsetX + extraRandomX
     ));
     const finalY = Math.max(50, Math.min(
-      CANVAS_HEIGHT - SHAPE_SIZE - 50, 
+      MANUAL_CANVAS_HEIGHT - SHAPE_SIZE - 50, 
       TARGET_CENTER_Y + randomOffsetY + extraRandomY
     ));
     
@@ -152,11 +151,13 @@ export const calculatePosition = (position) => {
       x: finalX, 
       y: finalY 
     };
-    console.log('📍 No position provided, using truly random position (AI):', {
+    console.log('📍 No position provided, using EXACT manual-style random position (AI):', {
       position: randomPos,
       angle: SPREAD_ANGLE,
       distance: SPREAD_DISTANCE,
-      extraRandom: { x: extraRandomX, y: extraRandomY }
+      extraRandom: { x: extraRandomX, y: extraRandomY },
+      manualCanvasWidth: MANUAL_CANVAS_WIDTH,
+      manualCanvasHeight: MANUAL_CANVAS_HEIGHT
     });
     return randomPos;
   }
@@ -167,93 +168,102 @@ export const calculatePosition = (position) => {
     return { x: position.x, y: position.y };
   }
 
-  // Calculate relative position within the viewport, adjusted for Stage offset
+  // Calculate relative position within the canvas
   const { relative } = position;
   if (!relative) {
     const centerPos = { 
-      x: viewportCenterX - stageOffsetX, 
-      y: viewportCenterY - stageOffsetY 
+      x: canvasCenterX, 
+      y: canvasCenterY 
     };
-    console.log('📍 No relative position, using adjusted center:', centerPos);
+    console.log('📍 No relative position, using canvas center:', centerPos);
     return centerPos;
   }
 
   const margin = 50; // Margin from edges
   
   let calculatedPos;
+  console.log('🔍 DEBUG: Processing relative position:', relative);
   switch (relative.toLowerCase()) {
     case 'center':
+      // Use the same canvas dimensions as manual shape creation
+      const CENTER_CANVAS_WIDTH = Math.min(1200, window.innerWidth - 300);
+      const CENTER_CANVAS_HEIGHT = 1000;
       calculatedPos = { 
-        x: viewportCenterX - stageOffsetX, 
-        y: viewportCenterY - stageOffsetY 
+        x: CENTER_CANVAS_WIDTH / 2, 
+        y: CENTER_CANVAS_HEIGHT / 2
       };
+      console.log('🔍 DEBUG: Center case - using manual-style center:', calculatedPos);
+      console.log('🔍 DEBUG: Center case - manual canvas dimensions:', { 
+        width: CENTER_CANVAS_WIDTH, 
+        height: CENTER_CANVAS_HEIGHT 
+      });
       break;
     
     case 'top-left':
       calculatedPos = { 
-        x: margin - stageOffsetX, 
-        y: margin - stageOffsetY 
+        x: margin, 
+        y: margin 
       };
       break;
     
     case 'top-right':
       calculatedPos = { 
-        x: (VIEWPORT_WIDTH - margin) - stageOffsetX, 
-        y: margin - stageOffsetY 
+        x: CANVAS_WIDTH - margin, 
+        y: margin 
       };
       break;
     
     case 'bottom-left':
       calculatedPos = { 
-        x: margin - stageOffsetX, 
-        y: (VIEWPORT_HEIGHT - margin) - stageOffsetY 
+        x: margin, 
+        y: CANVAS_HEIGHT - margin 
       };
       break;
     
     case 'bottom-right':
       calculatedPos = { 
-        x: (VIEWPORT_WIDTH - margin) - stageOffsetX, 
-        y: (VIEWPORT_HEIGHT - margin) - stageOffsetY 
+        x: CANVAS_WIDTH - margin, 
+        y: CANVAS_HEIGHT - margin 
       };
       break;
     
     case 'top':
       calculatedPos = { 
-        x: viewportCenterX - stageOffsetX, 
-        y: margin - stageOffsetY 
+        x: canvasCenterX, 
+        y: margin 
       };
       break;
     
     case 'bottom':
       calculatedPos = { 
-        x: viewportCenterX - stageOffsetX, 
-        y: (VIEWPORT_HEIGHT - margin) - stageOffsetY 
+        x: canvasCenterX, 
+        y: CANVAS_HEIGHT - margin 
       };
       break;
     
     case 'left':
       calculatedPos = { 
-        x: margin - stageOffsetX, 
-        y: viewportCenterY - stageOffsetY 
+        x: margin, 
+        y: canvasCenterY 
       };
       break;
     
     case 'right':
       calculatedPos = { 
-        x: (VIEWPORT_WIDTH - margin) - stageOffsetX, 
-        y: viewportCenterY - stageOffsetY 
+        x: CANVAS_WIDTH - margin, 
+        y: canvasCenterY 
       };
       break;
     
     default:
-      // Use truly random positioning for unknown relative positions
-      const CANVAS_WIDTH = Math.min(1200, window.innerWidth - 300);
-      const CANVAS_HEIGHT = 1000;
+      // Use the EXACT same logic as manual shape creation for unknown positions
+      const DEFAULT_CANVAS_WIDTH = Math.min(1200, window.innerWidth - 300);
+      const DEFAULT_CANVAS_HEIGHT = 1000;
       const SHAPE_SIZE = 100; // Default shape size
       
-      // Define the target area: mid-top center with randomization
-      const TARGET_CENTER_X = CANVAS_WIDTH / 2;
-      const TARGET_CENTER_Y = CANVAS_HEIGHT * 0.3; // 30% from top (mid-top)
+      // Define the target area: mid-top center with randomization (same as manual)
+      const TARGET_CENTER_X = DEFAULT_CANVAS_WIDTH / 2;
+      const TARGET_CENTER_Y = DEFAULT_CANVAS_HEIGHT * 0.3; // 30% from top (mid-top)
       
       // Create a truly random spread pattern - different for each shape
       const OFFSET_RANGE = 150; // Increased range for more variety
@@ -270,11 +280,11 @@ export const calculatePosition = (position) => {
       
       // Calculate final position with bounds checking
       const finalX = Math.max(50, Math.min(
-        CANVAS_WIDTH - SHAPE_SIZE - 50, 
+        DEFAULT_CANVAS_WIDTH - SHAPE_SIZE - 50, 
         TARGET_CENTER_X + randomOffsetX + extraRandomX
       ));
       const finalY = Math.max(50, Math.min(
-        CANVAS_HEIGHT - SHAPE_SIZE - 50, 
+        DEFAULT_CANVAS_HEIGHT - SHAPE_SIZE - 50, 
         TARGET_CENTER_Y + randomOffsetY + extraRandomY
       ));
       

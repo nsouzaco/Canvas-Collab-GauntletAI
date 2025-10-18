@@ -81,21 +81,61 @@ const handleCreateOperation = async (parsedCommand, operations) => {
     throw new Error('Invalid shape type for creation');
   }
 
+  // For AI-created shapes, we'll use the same positioning logic as manual creation
+  // but we need to handle color and text content separately
+  
+  console.log('🤖 AI: Using manual shape creation logic for positioning');
+  
   // Get color
   const fillColor = getColorHex(color);
   
   // Get size
   const sizeDimensions = getSizeDimensions(size?.description, type);
   
-  // Calculate position
-  const calculatedPosition = calculatePosition(position);
-  console.log('🔍 DEBUG: AI Operation - calculated position:', calculatedPosition);
+  // Use the same positioning logic as manual shape creation (ShapeToolbar.jsx)
+  const CANVAS_WIDTH = Math.min(1200, window.innerWidth - 300);
+  const CANVAS_HEIGHT = 1000;
+  const SHAPE_SIZE = 100; // Default shape size
   
-  // Create shape data
+  // Define the target area: mid-top center with randomization
+  const TARGET_CENTER_X = CANVAS_WIDTH / 2;
+  const TARGET_CENTER_Y = CANVAS_HEIGHT * 0.3; // 30% from top (mid-top)
+  
+  // Create a truly random spread pattern - different for each shape
+  const OFFSET_RANGE = 150; // Increased range for more variety
+  const SPREAD_ANGLE = Math.random() * 2 * Math.PI; // Random angle for spread
+  const SPREAD_DISTANCE = Math.random() * OFFSET_RANGE; // Random distance from center
+  
+  // Calculate offset using polar coordinates for natural distribution
+  const randomOffsetX = Math.cos(SPREAD_ANGLE) * SPREAD_DISTANCE;
+  const randomOffsetY = Math.sin(SPREAD_ANGLE) * SPREAD_DISTANCE;
+  
+  // Add additional random variation for more uniqueness
+  const extraRandomX = (Math.random() - 0.5) * 100; // -50 to +50
+  const extraRandomY = (Math.random() - 0.5) * 100; // -50 to +50
+  
+  // Calculate final position with bounds checking
+  const finalX = Math.max(50, Math.min(
+    CANVAS_WIDTH - SHAPE_SIZE - 50, 
+    TARGET_CENTER_X + randomOffsetX + extraRandomX
+  ));
+  const finalY = Math.max(50, Math.min(
+    CANVAS_HEIGHT - SHAPE_SIZE - 50, 
+    TARGET_CENTER_Y + randomOffsetY + extraRandomY
+  ));
+  
+  console.log('🤖 AI: Using manual-style positioning:', {
+    position: { x: finalX, y: finalY },
+    angle: SPREAD_ANGLE,
+    distance: SPREAD_DISTANCE,
+    extraRandom: { x: extraRandomX, y: extraRandomY }
+  });
+  
+  // Create shape data with manual positioning but AI-specified color and text
   const shapeData = {
     type,
-    x: calculatedPosition.x,
-    y: calculatedPosition.y,
+    x: finalX,
+    y: finalY,
     width: sizeDimensions.width,
     height: sizeDimensions.height,
     fill: fillColor,
@@ -103,24 +143,19 @@ const handleCreateOperation = async (parsedCommand, operations) => {
     strokeWidth: 1
   };
   
-  console.log('🔍 DEBUG: AI Operation - shape data before creation:', shapeData);
-
   // Add text content for text shapes
   if (type === 'text' && text) {
     shapeData.text = text;
-    console.log('📝 Adding text content:', text);
+    console.log('📝 Adding AI-specified text content:', text);
   } else if (type === 'text') {
     // Default text if none provided
     shapeData.text = 'Text';
     console.log('📝 No text provided, using default:', shapeData.text);
   }
-
-  // Note: No special positioning needed for circles - they use the same positioning as other shapes
-
-  console.log('🎨 Creating shape with data:', shapeData);
   
-  // Create the shape
-  console.log('🎨 Calling operations.createShape with:', shapeData.type, shapeData);
+  console.log('🎨 AI: Creating shape with manual positioning + AI styling:', shapeData);
+  
+  // Create the shape using the same method as manual creation
   const shapeId = await operations.createShape(shapeData.type, {
     x: shapeData.x,
     y: shapeData.y,
@@ -132,8 +167,8 @@ const handleCreateOperation = async (parsedCommand, operations) => {
     text: shapeData.text
   });
   
-  console.log('🎨 Shape created with ID:', shapeId);
-
+  console.log('🎨 AI: Shape created with ID:', shapeId);
+  
   return {
     operation: 'create',
     shapeId,
