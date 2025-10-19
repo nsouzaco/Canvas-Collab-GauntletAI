@@ -40,7 +40,6 @@ const Shape = ({
       // Small delay to ensure the shape is fully positioned after drag
       setTimeout(() => {
         if (transformerRef.current && shapeRef.current) {
-          console.log(`🔧 Re-attaching transformer for shape ${shape.id}`);
           transformerRef.current.nodes([shapeRef.current]);
           transformerRef.current.getLayer().batchDraw();
         }
@@ -75,32 +74,21 @@ const Shape = ({
     
     // Don't allow selection if locked by another user
     if (isLockedByAnotherUser) {
-      console.log(`🚫 Shape ${shape.id} is locked by another user, preventing selection`);
       return;
     }
 
     if (currentTool === 'multiselect') {
       // Multi-selection mode - toggle selection
-      console.log(`🔄 Toggling multi-selection for shape ${shape.id}`);
       onToggleSelection?.(shape.id);
     } else {
       // Allow selection regardless of tool (except multiselect)
       // This enables clicking any shape to select it
-      console.log(`✅ Selecting shape ${shape.id}`, { 
-        lockedBy: shape.lockedBy, 
-        currentUser: currentUser?.uid,
-        isSelected,
-        isLockedByAnotherUser,
-        currentTool
-      });
       onSelect?.(shape.id);
     }
   };
 
   const handleDoubleClick = (e) => {
-    console.log(`🖱️ Double-click on shape ${shape.id} of type ${shape.type}`);
     if (shape.type === 'text' && onTextEdit) {
-      console.log(`📝 Starting text edit for shape ${shape.id}`);
       e.cancelBubble = true;
       onTextEdit(shape.id);
     }
@@ -124,10 +112,8 @@ const Shape = ({
     
     // Auto-select the shape if it's not already selected by current user
     if (currentTool === 'select' && !isSelected) {
-      console.log(`🎯 Auto-selecting shape ${shape.id} on drag start`);
       onSelect?.(shape.id);
     } else if (currentTool === 'multiselect' && !isMultiSelected) {
-      console.log(`🎯 Auto-adding shape ${shape.id} to multi-selection on drag start`);
       onToggleSelection?.(shape.id);
     }
     
@@ -205,15 +191,6 @@ const Shape = ({
   const selectedByUser = onlineUsers.find((u) => u.userId === shape.selectedBy)?.displayName;
   const isLockedByAnotherUser = shape.lockedBy && shape.lockedBy !== currentUser?.uid;
   
-  // Debug logging for lock status
-  if (shape.lockedBy) {
-    console.log(`🔒 Shape ${shape.id} lock status:`, {
-      lockedBy: shape.lockedBy,
-      currentUser: currentUser?.uid,
-      isLockedByAnotherUser,
-      editingUser
-    });
-  }
   const isLockedByCurrentUser = shape.lockedBy === currentUser?.uid;
   
   
@@ -608,10 +585,7 @@ const Shape = ({
       )}
 
       {/* ─────────────── Transformer (Resize Handles) ─────────────── */}
-      {isSelected && !isDragging && (() => {
-        console.log(`🎯 Rendering transformer for shape ${shape.id}`, { isSelected, isDragging });
-        return true;
-      })() && (
+      {isSelected && !isDragging && (
         <Transformer
           ref={transformerRef}
           boundBoxFunc={(oldBox, newBox) => {

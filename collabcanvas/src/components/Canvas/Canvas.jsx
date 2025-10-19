@@ -7,10 +7,13 @@ import { useCursors } from '../../hooks/useCursors';
 import { useOptimizedPositioning } from '../../hooks/useOptimizedPositioning';
 import { getSmoothRemotePosition, clearAllRemotePositionCaches, clearRemotePositionCache } from '../../utils/remotePositionInterpolation';
 import { getCanvasDimensions, getViewportDimensions, MIN_ZOOM, MAX_ZOOM } from '../../utils/constants';
+import { snapToGrid, snapPositionToGrid, getGridLines } from '../../utils/snapUtils';
+import ExportControls from './ExportControls';
 import Shape from './Shape';
 import InlineTextEditor from './InlineTextEditor';
 import Cursor from '../Collaboration/Cursor';
 import PerformanceDashboard from '../Debug/PerformanceDashboard';
+import PerformanceTester from '../Performance/PerformanceTester';
 
 const GRID_SIZE = 20;
 
@@ -47,7 +50,7 @@ const Grid = ({ canvasWidth, canvasHeight }) => {
   return <>{lines}</>;
 };
 
-const Canvas = () => {
+const Canvas = ({ snapToGridEnabled: propSnapToGridEnabled }) => {
   const { 
     shapes, 
     selectedId, 
@@ -66,7 +69,8 @@ const Canvas = () => {
     realTimePositions,
     updateRealTimePosition,
     clearRealTimePosition,
-    executeAIOperation
+    executeAIOperation,
+    isGridVisibleForExport
   } = useCanvas();
   const { currentUser } = useAuth();
   const { onlineUsers } = usePresence();
@@ -88,9 +92,15 @@ const Canvas = () => {
   const [editingTextId, setEditingTextId] = useState(null);
   const [editingText, setEditingText] = useState('');
   const [showPerformanceDashboard, setShowPerformanceDashboard] = useState(false);
+  const [snapToGridEnabled, setSnapToGridEnabled] = useState(propSnapToGridEnabled ?? true);
   
 
   const { handleMouseMove } = useCursors(stagePos, scale);
+  
+  // Sync snap-to-grid prop with local state
+  useEffect(() => {
+    setSnapToGridEnabled(propSnapToGridEnabled ?? true);
+  }, [propSnapToGridEnabled]);
   
   // Handle window resize for responsive canvas
   useEffect(() => {
@@ -129,11 +139,11 @@ const Canvas = () => {
   // Clean up remote position caches when shapes are no longer being moved
   useEffect(() => {
     const currentTime = Date.now();
-    const timeout = 2000; // 2 seconds timeout for remote movements
+    const timeout = 1000; // 1 second timeout for remote movements (reduced from 2 seconds)
     
     Object.entries(realTimePositions).forEach(([shapeId, position]) => {
       if (position.updatedBy !== currentUser?.uid) {
-        // Check if this position is stale (no updates for 2 seconds)
+        // Check if this position is stale (no updates for 1 second)
         if (currentTime - position.timestamp > timeout) {
           console.log(`🧹 Cleaning up stale position for shape ${shapeId} from user ${position.updatedBy}`);
           clearRemotePositionCache(shapeId, position.updatedBy);
@@ -268,7 +278,13 @@ const Canvas = () => {
   const handleShapeDragMove = (e) => {
     e.cancelBubble = true;
     const shapeId = e.target.id();
-    const newPos = e.target.position();
+    let newPos = e.target.position();
+    
+    // Apply snap-to-grid if enabled
+    if (snapToGridEnabled) {
+      newPos = snapPositionToGrid(newPos);
+      e.target.position(newPos);
+    }
     
     // Use optimized positioning with interpolation for the dragged shape
     updateDragPosition(shapeId, newPos.x, newPos.y);
@@ -288,7 +304,14 @@ const Canvas = () => {
             if (id !== shapeId) {
               const initialPos = initialPositions[id];
               if (initialPos) {
-                updateDragPosition(id, initialPos.x + deltaX, initialPos.y + deltaY);
+                let targetPos = { x: initialPos.x + deltaX, y: initialPos.y + deltaY };
+                
+                // Apply snap-to-grid to other shapes too
+                if (snapToGridEnabled) {
+                  targetPos = snapPositionToGrid(targetPos);
+                }
+                
+                updateDragPosition(id, targetPos.x, targetPos.y);
               }
             }
           });
@@ -303,21 +326,18 @@ const Canvas = () => {
     const shapeId = e.target.id();
     const newPos = e.target.position();
     
-    console.log(`🏁 Drag end for shape ${shapeId} at position:`, newPos);
-    
     // End optimized drag tracking for the dragged shape
-    console.log(`🧹 Calling endDrag for shape ${shapeId}`);
     await endDrag(shapeId);
-    console.log(`✅ endDrag completed for shape ${shapeId}`);
+    
+    // Explicitly clear real-time position to remove yellow border
+    clearRealTimePosition(shapeId);
     
     // Update final position in Firestore for the dragged shape
     try {
-      console.log(`📝 Updating final position in Firestore for shape ${shapeId}`);
       await updateShape(shapeId, {
         x: newPos.x,
         y: newPos.y
       });
-      console.log(`✅ Final position updated in Firestore for shape ${shapeId}`);
     } catch (error) {
       console.error('Error updating position:', error);
     }
@@ -340,6 +360,8 @@ const Canvas = () => {
               
               try {
                 await updateShape(id, { x: finalX, y: finalY });
+                // Clear real-time position for each shape to remove yellow border
+                clearRealTimePosition(id);
               } catch (error) {
                 console.error(`Error updating position for shape ${id}:`, error);
               }
@@ -366,14 +388,10 @@ const Canvas = () => {
 
   // Handle text edit
   const handleTextEdit = (shapeId) => {
-    console.log(`📝 Text edit requested for shape ${shapeId}`)
     const shape = shapes.find(s => s.id === shapeId);
     if (shape && shape.type === 'text') {
-      console.log(`📝 Starting text edit for shape ${shapeId} with text: "${shape.text || 'Text'}"`)
       setEditingTextId(shapeId);
       setEditingText(shape.text || 'Text');
-    } else {
-      console.log(`❌ Text edit faied: shape not found or not text type`, { shape, shapeId });
     }
   };
 
@@ -467,8 +485,10 @@ const Canvas = () => {
             name="background"
           />
           
-          {/* Grid lines */}
-          <Grid canvasWidth={canvasDimensions.width} canvasHeight={canvasDimensions.height} />
+          {/* Grid lines - only show if snap-to-grid is enabled AND grid is visible for export */}
+          {(snapToGridEnabled && isGridVisibleForExport) && (
+            <Grid canvasWidth={canvasDimensions.width} canvasHeight={canvasDimensions.height} />
+          )}
           
           {/* Canvas boundary indicator */}
           <Rect
@@ -492,16 +512,6 @@ const Canvas = () => {
             const realTimePos = realTimePositions[shape.id];
             const isBeingMovedByOther = realTimePos && realTimePos.updatedBy !== currentUser?.uid;
             
-            // Debug logging for movement status
-            if (realTimePos) {
-              console.log(`🔄 Shape ${shape.id} movement status:`, {
-                realTimePos,
-                isBeingMovedByOther,
-                currentUser: currentUser?.uid,
-                timestamp: realTimePos.timestamp,
-                age: Date.now() - realTimePos.timestamp
-              });
-            }
             
             // Get smooth interpolated position only for remote users' movements
             const smoothRemotePos = realTimePos ? 
@@ -601,6 +611,9 @@ const Canvas = () => {
       
       {/* Performance Dashboard */}
       <PerformanceDashboard isVisible={showPerformanceDashboard} />
+      
+      {/* Performance Tester */}
+      <PerformanceTester />
     </div>
   );
 };

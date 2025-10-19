@@ -9,12 +9,15 @@ import Canvas from './components/Canvas/Canvas';
 import CanvasControls from './components/Canvas/CanvasControls';
 import ShapeToolbar from './components/Canvas/ShapeToolbar';
 import ZoomControls from './components/Canvas/ZoomControls';
+import ExportControls from './components/Canvas/ExportControls';
+import SnapToGridToggle from './components/Canvas/SnapToGridToggle';
 import ConnectionStatus from './components/Layout/ConnectionStatus';
 
 function App() {
   const { currentUser, loading } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
   const [showLanding, setShowLanding] = useState(true);
+  const [snapToGridEnabled, setSnapToGridEnabled] = useState(true);
 
   // Show loading while checking auth state
   if (loading) {
@@ -54,16 +57,29 @@ function App() {
         
         {/* Full-width canvas area */}
         <div className="flex-1 relative">
-          <Canvas />
+          <Canvas snapToGridEnabled={snapToGridEnabled} />
           
           {/* Floating UI Elements */}
           <div className="absolute top-4 left-4 z-10">
             <CanvasControls />
           </div>
           
+          {/* Export Controls - Top Right */}
+          <div className="absolute top-4 right-4 z-10">
+            <ExportControls />
+          </div>
+          
           {/* Shape Toolbar - Center Bottom - Responsive positioning */}
           <div className="absolute bottom-2 sm:bottom-4 left-1/2 transform -translate-x-1/2 z-10 max-w-full px-2">
             <ShapeToolbar />
+          </div>
+          
+          {/* Snap-to-Grid Toggle - Bottom Left */}
+          <div className="absolute bottom-4 left-4 z-10">
+            <SnapToGridToggle 
+              enabled={snapToGridEnabled}
+              onToggle={setSnapToGridEnabled}
+            />
           </div>
           
           {/* Zoom Controls - Bottom Right */}

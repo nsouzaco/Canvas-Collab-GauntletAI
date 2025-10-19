@@ -93,6 +93,52 @@ export const createShape = async (shapeData) => {
   }
 };
 
+// Create a new shape without auto-selecting (for bulk operations)
+export const createShapeWithoutSelection = async (shapeData) => {
+  try {
+    const canvasRef = doc(db, 'canvas', CANVAS_ID);
+    
+    // First get current shapes
+    const canvasDoc = await getDoc(canvasRef);
+    const currentShapes = canvasDoc.exists() ? canvasDoc.data().shapes || [] : [];
+    
+    const now = new Date();
+    const shape = {
+      id: shapeData.id,
+      type: shapeData.type,
+      x: shapeData.x,
+      y: shapeData.y,
+      width: shapeData.width,
+      height: shapeData.height,
+      fill: shapeData.fill,
+      createdBy: shapeData.createdBy,
+      createdAt: now,
+      lastModifiedBy: shapeData.createdBy,
+      lastModifiedAt: now,
+      isLocked: false,
+      lockedBy: null,
+      isSelected: false,
+      selectedBy: null
+    };
+
+    // Only add text field for text shapes and when text is defined
+    if (shapeData.type === 'text' && shapeData.text !== undefined) {
+      shape.text = shapeData.text;
+    }
+
+    const updatedShapes = [...currentShapes, shape];
+    
+    await setDoc(canvasRef, {
+      canvasId: CANVAS_ID,
+      shapes: updatedShapes,
+      lastUpdated: serverTimestamp()
+    }, { merge: true });
+  } catch (error) {
+    console.error('Error creating shape:', error);
+    throw new Error('Failed to create shape. Please try again.');
+  }
+};
+
 // Update an existing shape
 export const updateShape = async (shapeId, updates) => {
   

@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { 
   subscribeToShapes, 
   createShape, 
+  createShapeWithoutSelection,
   updateShape, 
   deleteShape, 
   lockShape, 
@@ -85,6 +86,121 @@ export const useCanvas = () => {
 
     return unsubscribe;
   }, [currentUser]);
+
+  // Add a new shape without auto-selecting (for bulk operations)
+  const addShapeWithoutSelection = useCallback(async (type, shapeDataOrPosition) => {
+    if (!currentUser) return null;
+
+    // Generate smooth colors based on shape type
+    const getShapeColor = (shapeType) => {
+      const colors = {
+        rectangle: [
+          '#3B82F6', '#8B5CF6', '#EC4899', '#F59E0B', 
+          '#10B981', '#EF4444', '#6366F1', '#F97316'
+        ],
+        circle: [
+          '#06B6D4', '#84CC16', '#F472B6', '#A78BFA',
+          '#34D399', '#FBBF24', '#FB7185', '#60A5FA'
+        ],
+        text: '#F3F4F6',
+        stickyNote: '#FEF68A',
+        card: '#FFFFFF',
+        list: '#F8FAFC'
+      };
+      
+      const colorPalette = colors[shapeType] || colors.rectangle;
+      return colorPalette[Math.floor(Math.random() * colorPalette.length)];
+    };
+
+    // Check if we received full shape data (from AI) or just position (from manual creation)
+    const isFullShapeData = shapeDataOrPosition && typeof shapeDataOrPosition === 'object' && 
+      ('width' in shapeDataOrPosition || 'height' in shapeDataOrPosition || 'fill' in shapeDataOrPosition);
+
+    let shapeData;
+    if (isFullShapeData) {
+      // AI provided full shape data - use it as-is but ensure required fields
+      shapeData = {
+        ...shapeDataOrPosition,
+        id: shapeDataOrPosition.id || `shape_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        createdBy: currentUser.uid
+      };
+    } else {
+      // Manual creation - use defaults
+      const position = shapeDataOrPosition;
+      shapeData = {
+        id: `shape_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        type,
+        x: position.x,
+        y: position.y,
+        width: type === 'stickyNote' ? 300 : type === 'card' ? 280 : type === 'list' ? 280 : 100,
+        height: type === 'stickyNote' ? 350 : type === 'card' ? 200 : type === 'list' ? 320 : 100,
+        fill: getShapeColor(type),
+        ...(type === 'text' && { text: 'Text' }),
+        ...(type === 'stickyNote' && { 
+          text: 'Remember to:\n\n• Buy groceries\n• Call mom\n• Finish project\n• Water plants'
+        }),
+        ...(type === 'card' && { 
+          title: 'Card Title',
+          content: 'This is a card with some content. You can edit this text by double-clicking.',
+          width: 280,
+          height: 200
+        }),
+        ...(type === 'list' && { 
+          title: 'Project Tasks',
+          items: ['Design user interface', 'Implement authentication', 'Add real-time features', 'Write documentation', 'Deploy to production'],
+          width: 280,
+          height: 320
+        }),
+        createdBy: currentUser.uid
+      };
+    }
+
+    // If offline, add to offline queue and update local state
+    if (isOffline) {
+      OfflineQueue.addAction({
+        type: 'CREATE_SHAPE',
+        data: shapeData
+      });
+      
+      // Update local state immediately for better UX
+      setShapes(prev => [...prev, shapeData]);
+      CanvasPersistence.saveCanvasState([...shapes, shapeData], {
+        lastSync: Date.now(),
+        source: 'offline'
+      });
+      
+      return shapeData.id;
+    }
+
+    try {
+      await createShapeWithoutSelection(shapeData);
+      // Update local state immediately for better UX
+      setShapes(prev => {
+        // Check if shape already exists to avoid duplicates
+        if (prev.find(shape => shape.id === shapeData.id)) {
+          return prev;
+        }
+        return [...prev, shapeData];
+      });
+      return shapeData.id;
+    } catch (error) {
+      console.error('Error creating shape:', error);
+      
+      // If Firebase fails, queue for later and update local state
+      OfflineQueue.addAction({
+        type: 'CREATE_SHAPE',
+        data: shapeData
+      });
+      
+      setShapes(prev => [...prev, shapeData]);
+      CanvasPersistence.saveCanvasState([...shapes, shapeData], {
+        lastSync: Date.now(),
+        source: 'offline_fallback'
+      });
+      
+      return shapeData.id;
+    }
+  }, [currentUser, isOffline, shapes]);
 
   // Add a new shape
   const addShape = useCallback(async (type, shapeDataOrPosition) => {
@@ -345,6 +461,7 @@ export const useCanvas = () => {
     isOffline,
     lastSyncTime,
     addShape,
+    addShapeWithoutSelection,
     updateShape: updateShapeData,
     deleteShape: deleteShapeData,
     lockShape: lockShapeData,
