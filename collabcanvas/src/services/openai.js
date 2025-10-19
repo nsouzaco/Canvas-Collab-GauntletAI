@@ -36,7 +36,7 @@ export const parseShapeCommand = async (command) => {
           For CREATE operations:
           {
             "operation": "create",
-            "type": "rectangle|circle|text",
+            "type": "rectangle|circle|text|stickyNote|card|list",
             "color": "color name (red, blue, green, etc.)",
             "position": {
               "x": number,
@@ -48,7 +48,7 @@ export const parseShapeCommand = async (command) => {
               "height": number,
               "description": "small|medium|large"
             },
-            "text": "extracted text content if type is text - be smart about extracting meaningful text from user input",
+            "text": "extracted text content - be smart about extracting meaningful text from user input",
             "confidence": 0.0-1.0
           }
           
@@ -56,7 +56,7 @@ export const parseShapeCommand = async (command) => {
           {
             "operation": "move",
             "target": {
-              "type": "rectangle|circle|text",
+              "type": "rectangle|circle|text|stickyNote|card|list",
               "color": "color name",
               "id": "shape id if known"
             },
@@ -72,7 +72,7 @@ export const parseShapeCommand = async (command) => {
           {
             "operation": "delete",
             "target": {
-              "type": "rectangle|circle|text",
+              "type": "rectangle|circle|text|stickyNote|card|list",
               "color": "color name",
               "id": "shape id if known"
             },
@@ -83,7 +83,7 @@ export const parseShapeCommand = async (command) => {
           {
             "operation": "resize",
             "target": {
-              "type": "rectangle|circle|text",
+              "type": "rectangle|circle|text|stickyNote|card|list",
               "color": "color name",
               "id": "shape id if known"
             },
@@ -101,13 +101,27 @@ export const parseShapeCommand = async (command) => {
           - Support relative positions: "top right", "center", "bottom left", "left", "right", "up", "down"
           - Support size descriptions: "small", "medium", "large", "bigger", "smaller"
           - Support common color names: red, blue, green, yellow, orange, purple, pink, etc.
-          - For TEXT shapes: Intelligently extract text content from user input. Look for:
+          
+          Shape Type Recognition:
+          - "rectangle", "square", "box" → rectangle
+          - "circle", "round" → circle
+          - "text", "label", "note" → text
+          - "sticky note", "sticky", "post-it", "note" → stickyNote
+          - "card", "info card", "information card" → card
+          - "list", "checklist", "todo list", "task list" → list
+          
+          For TEXT shapes: Intelligently extract text content from user input. Look for:
             * Quoted text: "Hello World", 'Welcome', \`Code\`
             * Text after keywords: "write Hello", "add text Welcome", "create text Meeting Notes"
             * Text in context: "rectangle with text Data", "circle saying Results"
             * Simple text: "text Hello World", "label My Label"
             * Text in parentheses: "(Important Notice)"
             * Short inputs without shape keywords: "Hello" → treat as text content
+          
+          For STICKY NOTE shapes: Extract note content and use type "stickyNote"
+          For CARD shapes: Extract title and content, use type "card"
+          For LIST shapes: Extract title and items, use type "list"
+          
           - Be smart about text extraction - understand user intent and extract meaningful content
           - Return confidence score based on command clarity
           - If command is unclear, return error message`
@@ -151,12 +165,17 @@ export const getCommandSuggestions = () => {
   return [
     "draw a red circle",
     "add a blue rectangle in the top right corner",
+    "create a sticky note with my shopping list",
+    "add a todo list for project tasks",
+    "create a card with meeting notes",
     "move the red circle to the left",
     "delete the blue rectangle",
     "make the green square bigger",
     "move the yellow circle to the center",
     "delete the purple rectangle",
     "create a small orange circle",
+    "add a checklist for today",
+    "create a sticky note with reminders",
     "move the green square to the top right",
     "make the red circle smaller"
   ];

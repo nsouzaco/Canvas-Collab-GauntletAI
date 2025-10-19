@@ -61,8 +61,8 @@ function App() {
             <CanvasControls />
           </div>
           
-          {/* Shape Toolbar - Center Bottom */}
-          <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-10">
+          {/* Shape Toolbar - Center Bottom - Responsive positioning */}
+          <div className="absolute bottom-2 sm:bottom-4 left-1/2 transform -translate-x-1/2 z-10 max-w-full px-2">
             <ShapeToolbar />
           </div>
           

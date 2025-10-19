@@ -205,7 +205,7 @@ const ColorPicker = ({ selectedColor, onColorChange, disabled = false }) => {
 
       {/* Color Picker Dropdown */}
       {isOpen && (
-        <div className="absolute top-12 left-0 z-50 bg-white rounded-lg shadow-lg border border-gray-200 p-3 min-w-[280px]">
+        <div className="absolute bottom-12 left-0 z-50 bg-white rounded-lg shadow-lg border border-gray-200 p-3 min-w-[280px]">
           {/* Color Wheel */}
           <div className="mb-4">
             <h4 className="text-xs font-medium text-gray-700 mb-2">Color Wheel</h4>

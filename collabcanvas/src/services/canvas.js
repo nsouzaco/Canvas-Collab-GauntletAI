@@ -69,8 +69,10 @@ export const createShape = async (shapeData) => {
       createdAt: now,
       lastModifiedBy: shapeData.createdBy,
       lastModifiedAt: now,
-      isLocked: false,
-      lockedBy: null
+      isLocked: true,
+      lockedBy: shapeData.createdBy,
+      isSelected: true,
+      selectedBy: shapeData.createdBy
     };
 
     // Only add text field for text shapes and when text is defined
@@ -297,8 +299,10 @@ export const updateShapePosition = async (shapeId, x, y, userId) => {
 export const clearShapePosition = async (shapeId) => {
   const positionRef = ref(rtdb, `positions/${shapeId}`);
   
+  console.log(`🗑️ clearShapePosition called for shape ${shapeId}`);
   try {
     await remove(positionRef);
+    console.log(`✅ Real-time position removed from database for shape ${shapeId}`);
   } catch (error) {
     console.error('Error clearing real-time position:', error);
   }

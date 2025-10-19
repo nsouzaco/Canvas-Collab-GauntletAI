@@ -1,11 +1,36 @@
 import React from 'react';
 import { signOutUser, getDisplayName } from '../../services/auth';
 import { useAuth } from '../../contexts/AuthContext';
+import { clearUserSelections, clearUserLocks } from '../../services/canvas';
+import { setUserOffline } from '../../services/presence';
 
 const Navbar = () => {
   const { currentUser } = useAuth();
 
   const handleSignOut = async () => {
+    if (!currentUser) return;
+    
+    const userId = currentUser.uid;
+    console.log(`🚪 User ${userId} signing out - cleaning up locks and selections`);
+    
+    try {
+      // Clear all user's locks and selections before signing out
+      console.log(`🧹 Clearing locks for user ${userId}`);
+      await clearUserLocks(userId);
+      
+      console.log(`🧹 Clearing selections for user ${userId}`);
+      await clearUserSelections(userId);
+      
+      console.log(`👋 Setting user ${userId} as offline`);
+      await setUserOffline(userId);
+      
+      console.log(`✅ Cleanup completed for user ${userId}`);
+    } catch (error) {
+      console.error('Error during sign out cleanup:', error);
+      // Continue with sign out even if cleanup fails
+    }
+    
+    // Sign out the user
     await signOutUser();
   };
 
@@ -15,7 +40,7 @@ const Navbar = () => {
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center pt-8">
             <h1 className="text-3xl font-bold text-blue-600 leading-tight" style={{ fontFamily: "'Borel', cursive" }}>
-              Canvas Collab
+              Startup Collab
             </h1>
           </div>
           

@@ -113,20 +113,25 @@ export const useOptimizedPositioning = () => {
   const endDrag = useCallback(async (shapeId) => {
     if (dragShapeId !== shapeId) return;
 
+    console.log(`🛑 endDrag called for shape ${shapeId}`);
     setIsDragging(false);
     setDragShapeId(null);
     
     // Clear real-time position from database
     try {
+      console.log(`🗑️ Clearing real-time position for shape ${shapeId}`);
       await clearShapePosition(shapeId);
+      console.log(`✅ Real-time position cleared for shape ${shapeId}`);
     } catch (error) {
       console.error('Error clearing position:', error);
     }
 
     // Clear local caches
+    console.log(`🧹 Clearing local caches for shape ${shapeId}`);
     clearPositionCache(shapeId);
     delete lastPositionRef.current[shapeId];
     delete velocityRef.current[shapeId];
+    console.log(`✅ Local caches cleared for shape ${shapeId}`);
   }, [dragShapeId]);
 
   // Cleanup on unmount

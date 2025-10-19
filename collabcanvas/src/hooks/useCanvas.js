@@ -101,7 +101,10 @@ export const useCanvas = () => {
           '#06B6D4', '#84CC16', '#F472B6', '#A78BFA',
           '#34D399', '#FBBF24', '#FB7185', '#60A5FA'
         ],
-        text: '#F3F4F6'
+        text: '#F3F4F6',
+        stickyNote: '#FEF68A',
+        card: '#FFFFFF',
+        list: '#F8FAFC'
       };
       
       const colorPalette = colors[shapeType] || colors.rectangle;
@@ -127,6 +130,23 @@ export const useCanvas = () => {
         stroke: shapeDataOrPosition.stroke || '#E5E7EB',
         strokeWidth: shapeDataOrPosition.strokeWidth || 1,
         ...(type === 'text' && { text: shapeDataOrPosition.text || 'Text' }),
+        ...(type === 'stickyNote' && { 
+          text: shapeDataOrPosition.text || 'Remember to:\n\n• Buy groceries\n• Call mom\n• Finish project\n• Water plants',
+          width: 300,
+          height: 350
+        }),
+        ...(type === 'card' && { 
+          title: shapeDataOrPosition.title || 'Card Title',
+          content: shapeDataOrPosition.content || 'This is a card with some content. You can edit this text by double-clicking.',
+          width: 280,
+          height: 200
+        }),
+        ...(type === 'list' && { 
+          title: shapeDataOrPosition.title || 'Project Tasks',
+          items: shapeDataOrPosition.items || ['Design user interface', 'Implement authentication', 'Add real-time features', 'Write documentation', 'Deploy to production'],
+          width: 280,
+          height: 320
+        }),
         createdBy: currentUser.uid
       };
     } else {
@@ -137,10 +157,25 @@ export const useCanvas = () => {
         type,
         x: position.x,
         y: position.y,
-        width: 100,
-        height: 100,
+        width: type === 'stickyNote' ? 300 : type === 'card' ? 280 : type === 'list' ? 280 : 100,
+        height: type === 'stickyNote' ? 350 : type === 'card' ? 200 : type === 'list' ? 320 : 100,
         fill: getShapeColor(type),
         ...(type === 'text' && { text: 'Text' }),
+        ...(type === 'stickyNote' && { 
+          text: 'Remember to:\n\n• Buy groceries\n• Call mom\n• Finish project\n• Water plants'
+        }),
+        ...(type === 'card' && { 
+          title: 'Card Title',
+          content: 'This is a card with some content. You can edit this text by double-clicking.',
+          width: 280,
+          height: 200
+        }),
+        ...(type === 'list' && { 
+          title: 'Project Tasks',
+          items: ['Design user interface', 'Implement authentication', 'Add real-time features', 'Write documentation', 'Deploy to production'],
+          width: 280,
+          height: 320
+        }),
         createdBy: currentUser.uid
       };
     }
@@ -164,6 +199,14 @@ export const useCanvas = () => {
 
     try {
       await createShape(shapeData);
+      // Update local state immediately for better UX
+      setShapes(prev => {
+        // Check if shape already exists to avoid duplicates
+        if (prev.find(shape => shape.id === shapeData.id)) {
+          return prev;
+        }
+        return [...prev, shapeData];
+      });
       return shapeData.id;
     } catch (error) {
       console.error('Error creating shape:', error);

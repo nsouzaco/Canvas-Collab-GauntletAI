@@ -1,13 +1,16 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Rect, Circle, Text, Group, Transformer } from "react-konva";
+import List from '../shapes/List';
 
 const MIN_SIZE = 30;
 
 const Shape = ({
   shape,
   isSelected,
+  isMultiSelected = false,
   isBeingMovedByOther = false,
   onSelect,
+  onToggleSelection,
   onDragStart,
   onDragMove,
   onDragEnd,
@@ -30,6 +33,20 @@ const Shape = ({
       transformerRef.current.getLayer().batchDraw();
     }
   }, [isSelected]);
+
+  // 🔹 Re-attach transformer after dragging ends
+  useEffect(() => {
+    if (isSelected && !isDragging && transformerRef.current && shapeRef.current) {
+      // Small delay to ensure the shape is fully positioned after drag
+      setTimeout(() => {
+        if (transformerRef.current && shapeRef.current) {
+          console.log(`🔧 Re-attaching transformer for shape ${shape.id}`);
+          transformerRef.current.nodes([shapeRef.current]);
+          transformerRef.current.getLayer().batchDraw();
+        }
+      }, 50);
+    }
+  }, [isSelected, isDragging]);
 
   // 🔹 Reset scale after remote size updates (from Firebase or others)
   useEffect(() => {
@@ -55,18 +72,29 @@ const Shape = ({
   // 🔹 Event handlers
   const handleClick = (e) => {
     e.cancelBubble = true;
-    // Only allow selection if select tool is active
-    if (currentTool !== 'select') {
-      return;
-    }
+    
     // Don't allow selection if locked by another user
     if (isLockedByAnotherUser) {
       console.log(`🚫 Shape ${shape.id} is locked by another user, preventing selection`);
       return;
     }
-    // Auto-select the shape (this will also lock it)
-    console.log(`✅ Selecting shape ${shape.id}`, { lockedBy: shape.lockedBy, currentUser: currentUser?.uid });
-    onSelect?.(shape.id);
+
+    if (currentTool === 'multiselect') {
+      // Multi-selection mode - toggle selection
+      console.log(`🔄 Toggling multi-selection for shape ${shape.id}`);
+      onToggleSelection?.(shape.id);
+    } else {
+      // Allow selection regardless of tool (except multiselect)
+      // This enables clicking any shape to select it
+      console.log(`✅ Selecting shape ${shape.id}`, { 
+        lockedBy: shape.lockedBy, 
+        currentUser: currentUser?.uid,
+        isSelected,
+        isLockedByAnotherUser,
+        currentTool
+      });
+      onSelect?.(shape.id);
+    }
   };
 
   const handleDoubleClick = (e) => {
@@ -80,8 +108,8 @@ const Shape = ({
 
   const handleDragStart = (e) => {
     e.cancelBubble = true;
-    // Only allow dragging if select tool is active
-    if (currentTool !== 'select') {
+    // Only allow dragging if select or multiselect tool is active
+    if (currentTool !== 'select' && currentTool !== 'multiselect') {
       return;
     }
     // Don't allow dragging if locked by another user
@@ -95,8 +123,12 @@ const Shape = ({
     }
     
     // Auto-select the shape if it's not already selected by current user
-    if (!isSelected || !isLockedByCurrentUser) {
+    if (currentTool === 'select' && !isSelected) {
+      console.log(`🎯 Auto-selecting shape ${shape.id} on drag start`);
       onSelect?.(shape.id);
+    } else if (currentTool === 'multiselect' && !isMultiSelected) {
+      console.log(`🎯 Auto-adding shape ${shape.id} to multi-selection on drag start`);
+      onToggleSelection?.(shape.id);
     }
     
     setIsDragging(true);
@@ -116,8 +148,8 @@ const Shape = ({
 
   const handleTransformStart = (e) => {
     e.cancelBubble = true;
-    // Only allow transforming if select tool is active
-    if (currentTool !== 'select') {
+    // Only allow transforming if select or multiselect tool is active
+    if (currentTool !== 'select' && currentTool !== 'multiselect') {
       return;
     }
     // Don't allow transforming if locked by another user
@@ -126,8 +158,10 @@ const Shape = ({
     }
     
     // Auto-select the shape if it's not already selected by current user
-    if (!isSelected || !isLockedByCurrentUser) {
+    if (currentTool === 'select' && (!isSelected || !isLockedByCurrentUser)) {
       onSelect?.(shape.id);
+    } else if (currentTool === 'multiselect' && !isMultiSelected) {
+      onToggleSelection?.(shape.id);
     }
     
     setIsTransforming(true);
@@ -170,6 +204,16 @@ const Shape = ({
   const editingUser = onlineUsers.find((u) => u.userId === shape.lockedBy)?.displayName;
   const selectedByUser = onlineUsers.find((u) => u.userId === shape.selectedBy)?.displayName;
   const isLockedByAnotherUser = shape.lockedBy && shape.lockedBy !== currentUser?.uid;
+  
+  // Debug logging for lock status
+  if (shape.lockedBy) {
+    console.log(`🔒 Shape ${shape.id} lock status:`, {
+      lockedBy: shape.lockedBy,
+      currentUser: currentUser?.uid,
+      isLockedByAnotherUser,
+      editingUser
+    });
+  }
   const isLockedByCurrentUser = shape.lockedBy === currentUser?.uid;
   
   
@@ -182,7 +226,7 @@ const Shape = ({
         x={shape.x}
         y={shape.y}
         rotation={shape.rotation || 0}
-        draggable={currentTool === 'select' && !isLockedByAnotherUser && !isBeingMovedByOther}
+        draggable={!isLockedByAnotherUser && !isBeingMovedByOther && (isSelected || isMultiSelected)}
         onClick={handleClick}
         onTap={handleClick}
         onDragStart={handleDragStart}
@@ -201,8 +245,8 @@ const Shape = ({
             width={shape.width}
             height={shape.height}
             fill={shape.fill}
-            stroke={isSelected ? "#3b82f6" : isBeingMovedByOther ? "#f59e0b" : "#E5E7EB"}
-            strokeWidth={isSelected ? 3 : isBeingMovedByOther ? 2 : 1}
+            stroke={isSelected ? "#3b82f6" : isMultiSelected ? "#8B5CF6" : isBeingMovedByOther ? "#f59e0b" : "#E5E7EB"}
+            strokeWidth={isSelected ? 3 : isMultiSelected ? 3 : isBeingMovedByOther ? 2 : 1}
             opacity={isBeingMovedByOther ? 0.8 : 1}
           />
         )}
@@ -229,8 +273,8 @@ const Shape = ({
             y={shape.height / 2}
             radius={Math.min(shape.width, shape.height) / 2}
             fill={shape.fill}
-            stroke={isSelected ? "#3b82f6" : isBeingMovedByOther ? "#f59e0b" : "#E5E7EB"}
-            strokeWidth={isSelected ? 3 : isBeingMovedByOther ? 2 : 1}
+            stroke={isSelected ? "#3b82f6" : isMultiSelected ? "#8B5CF6" : isBeingMovedByOther ? "#f59e0b" : "#E5E7EB"}
+            strokeWidth={isSelected ? 3 : isMultiSelected ? 3 : isBeingMovedByOther ? 2 : 1}
             opacity={isBeingMovedByOther ? 0.8 : 1}
           />
         )}
@@ -282,6 +326,54 @@ const Shape = ({
           />
         )}
 
+        {/* Locked object border for sticky notes */}
+        {shape.type === "stickyNote" && isLockedByAnotherUser && (
+          <Rect
+            x={-3}
+            y={-3}
+            width={shape.width + 6}
+            height={shape.height + 6}
+            fill="transparent"
+            stroke="#ef4444"
+            strokeWidth={3}
+            dash={[8, 4]}
+            listening={false}
+            cornerRadius={2}
+          />
+        )}
+
+        {/* Locked object border for cards */}
+        {shape.type === "card" && isLockedByAnotherUser && (
+          <Rect
+            x={-3}
+            y={-3}
+            width={shape.width + 6}
+            height={shape.height + 6}
+            fill="transparent"
+            stroke="#ef4444"
+            strokeWidth={3}
+            dash={[8, 4]}
+            listening={false}
+            cornerRadius={8}
+          />
+        )}
+
+        {/* Locked object border for lists */}
+        {shape.type === "list" && isLockedByAnotherUser && (
+          <Rect
+            x={-3}
+            y={-3}
+            width={shape.width + 6}
+            height={shape.height + 6}
+            fill="transparent"
+            stroke="#ef4444"
+            strokeWidth={3}
+            dash={[8, 4]}
+            listening={false}
+            cornerRadius={6}
+          />
+        )}
+
         {shape.type === "text" && (
           <Text
             x={0}
@@ -289,7 +381,7 @@ const Shape = ({
             width={Math.max(shape.width, 150)}
             height={shape.height}
             text={shape.text || "Text"}
-            fontSize={14}
+            fontSize={shape.fontSize || 14}
             fontFamily="Inter, system-ui, sans-serif"
             fill="#1F2937"
             align="center"
@@ -299,6 +391,130 @@ const Shape = ({
             ellipsis={false}
             onDblClick={handleDoubleClick}
             onDblTap={handleDoubleClick}
+          />
+        )}
+
+        {shape.type === "stickyNote" && (
+          <Rect
+            ref={shapeRef}
+            x={0}
+            y={0}
+            width={shape.width}
+            height={shape.height}
+            fill={shape.fill}
+            stroke={isSelected ? "#3b82f6" : isMultiSelected ? "#8B5CF6" : isBeingMovedByOther ? "#f59e0b" : "#E5E7EB"}
+            strokeWidth={isSelected ? 3 : isMultiSelected ? 3 : isBeingMovedByOther ? 2 : 1}
+            opacity={isBeingMovedByOther ? 0.8 : 1}
+            cornerRadius={2}
+            onDblClick={handleDoubleClick}
+            onDblTap={handleDoubleClick}
+          />
+        )}
+
+        {/* Sticky Note Text Content */}
+        {shape.type === "stickyNote" && (
+          <Text
+            x={20}
+            y={50}
+            width={shape.width - 40}
+            height={shape.height - 100}
+            text={shape.text || "Remember to:\n\n• Buy groceries\n• Call mom\n• Finish project\n• Water plants"}
+            fontSize={18}
+            fontFamily="Segoe UI, Arial, sans-serif"
+            fill="#333"
+            align="left"
+            verticalAlign="top"
+            wrap="word"
+            ellipsis={false}
+            onDblClick={handleDoubleClick}
+            onDblTap={handleDoubleClick}
+          />
+        )}
+
+        {/* Sticky Note Pin Emoji */}
+        {shape.type === "stickyNote" && (
+          <Text
+            x={shape.width / 2 - 20}
+            y={-30}
+            text="📌"
+            fontSize={40}
+            fontFamily="Arial, sans-serif"
+            align="center"
+            verticalAlign="middle"
+          />
+        )}
+
+        {/* Card Shape */}
+        {shape.type === "card" && (
+          <Rect
+            ref={shapeRef}
+            x={0}
+            y={0}
+            width={shape.width}
+            height={shape.height}
+            fill={shape.fill}
+            stroke={isSelected ? "#3b82f6" : isMultiSelected ? "#8B5CF6" : isBeingMovedByOther ? "#f59e0b" : "#E5E7EB"}
+            strokeWidth={isSelected ? 3 : isMultiSelected ? 3 : isBeingMovedByOther ? 2 : 1}
+            opacity={isBeingMovedByOther ? 0.8 : 1}
+            cornerRadius={8}
+            shadowColor="rgba(0,0,0,0.1)"
+            shadowBlur={10}
+            shadowOffset={{ x: 2, y: 2 }}
+            onDblClick={handleDoubleClick}
+            onDblTap={handleDoubleClick}
+          />
+        )}
+
+        {/* Card Title */}
+        {shape.type === "card" && (
+          <Text
+            x={15}
+            y={15}
+            width={shape.width - 30}
+            height={30}
+            text={shape.title || "Card Title"}
+            fontSize={18}
+            fontFamily="Inter, system-ui, sans-serif"
+            fill="#1F2937"
+            align="left"
+            verticalAlign="top"
+            fontStyle="bold"
+            wrap="word"
+            ellipsis={true}
+            onDblClick={handleDoubleClick}
+            onDblTap={handleDoubleClick}
+          />
+        )}
+
+        {/* Card Content */}
+        {shape.type === "card" && (
+          <Text
+            x={15}
+            y={50}
+            width={shape.width - 30}
+            height={shape.height - 70}
+            text={shape.content || "This is a card with some content. You can edit this text by double-clicking."}
+            fontSize={14}
+            fontFamily="Inter, system-ui, sans-serif"
+            fill="#4B5563"
+            align="left"
+            verticalAlign="top"
+            wrap="word"
+            ellipsis={false}
+            onDblClick={handleDoubleClick}
+            onDblTap={handleDoubleClick}
+          />
+        )}
+
+        {/* List Shape */}
+        {shape.type === "list" && (
+          <List
+            shape={shape}
+            isSelected={isSelected}
+            isMultiSelected={isMultiSelected}
+            isBeingMovedByOther={isBeingMovedByOther}
+            onDoubleClick={handleDoubleClick}
+            shapeRef={shapeRef}
           />
         )}
       </Group>
@@ -329,26 +545,29 @@ const Shape = ({
         </Group>
       )}
 
-      {selectedByUser && selectedByUser !== editingUser && (
+      {/* Multi-Selection Indicator */}
+      {isMultiSelected && !isDragging && (
         <Group
-          x={shape.x + shape.width + 60}
-          y={shape.y + (editingUser ? -45 : -20)}
+          x={shape.x - 25}
+          y={shape.y - 25}
         >
-          <Rect
+          <Circle
             x={0}
             y={0}
-            width={100}
-            height={18}
-            fill="#10b981"
-            cornerRadius={3}
+            radius={10}
+            fill="#8B5CF6"
           />
           <Text
-            x={3}
-            y={3}
-            text={`👤 ${selectedByUser}`}
-            fontSize={10}
+            x={0}
+            y={0}
+            text="✓"
+            fontSize={14}
             fill="white"
             fontStyle="bold"
+            align="center"
+            verticalAlign="middle"
+            offsetX={3}
+            offsetY={4}
           />
         </Group>
       )}
@@ -389,7 +608,10 @@ const Shape = ({
       )}
 
       {/* ─────────────── Transformer (Resize Handles) ─────────────── */}
-      {isSelected && !isDragging && (
+      {isSelected && !isDragging && (() => {
+        console.log(`🎯 Rendering transformer for shape ${shape.id}`, { isSelected, isDragging });
+        return true;
+      })() && (
         <Transformer
           ref={transformerRef}
           boundBoxFunc={(oldBox, newBox) => {
@@ -400,7 +622,7 @@ const Shape = ({
             return newBox;
           }}
           enabledAnchors={["top-left", "top-right", "bottom-left", "bottom-right"]}
-          borderEnabled
+          borderEnabled={true}
           borderStroke="#3b82f6"
           borderStrokeWidth={2}
           anchorStroke="#3b82f6"
@@ -409,6 +631,8 @@ const Shape = ({
           anchorSize={8}
           rotateEnabled={true}
           rotationSnaps={[0, 45, 90, 135, 180, 225, 270, 315]}
+          keepRatio={false}
+          centeredScaling={false}
         />
       )}
     </>

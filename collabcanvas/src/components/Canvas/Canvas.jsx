@@ -51,12 +51,15 @@ const Canvas = () => {
   const { 
     shapes, 
     selectedId, 
+    selectedIds,
     currentTool, 
     stageRef, 
     selectShape, 
+    toggleShapeSelection,
     deselectAll, 
     updateShape, 
     deleteShape, 
+    deleteSelectedShapes,
     loading, 
     lockShape, 
     unlockShape,
@@ -132,11 +135,14 @@ const Canvas = () => {
       if (position.updatedBy !== currentUser?.uid) {
         // Check if this position is stale (no updates for 2 seconds)
         if (currentTime - position.timestamp > timeout) {
+          console.log(`🧹 Cleaning up stale position for shape ${shapeId} from user ${position.updatedBy}`);
           clearRemotePositionCache(shapeId, position.updatedBy);
+          // Also clear the real-time position from the state
+          clearRealTimePosition(shapeId);
         }
       }
     });
-  }, [realTimePositions, currentUser]);
+  }, [realTimePositions, currentUser, clearRealTimePosition]);
 
   // Ensure grid layer stays at the bottom
   useEffect(() => {
@@ -233,11 +239,25 @@ const Canvas = () => {
     e.cancelBubble = true;
     const shapeId = e.target.id();
     
-    // Shape should already be locked from selection, but ensure it's locked
-    await lockShape(shapeId);
+    // Ensure the shape is selected and locked
+    await selectShape(shapeId);
     
-    // Start optimized drag tracking
+    // Start optimized drag tracking for the dragged shape
     startDrag(shapeId);
+    
+    // If we're in multi-select mode and this shape is part of the selection,
+    // start tracking all selected shapes
+    if (currentTool === 'multiselect' && selectedIds?.includes(shapeId)) {
+      // Store initial positions of all selected shapes
+      const initialPositions = {};
+      selectedIds?.forEach(id => {
+        const shape = shapes.find(s => s.id === id);
+        if (shape) {
+          initialPositions[id] = { x: shape.x, y: shape.y };
+        }
+      });
+      e.target.setAttr('initialPositions', initialPositions);
+    }
     
     // Disable stage dragging while dragging a shape
     const stage = e.target.getStage();
@@ -250,8 +270,31 @@ const Canvas = () => {
     const shapeId = e.target.id();
     const newPos = e.target.position();
     
-    // Use optimized positioning with interpolation
+    // Use optimized positioning with interpolation for the dragged shape
     updateDragPosition(shapeId, newPos.x, newPos.y);
+    
+    // If we're in multi-select mode and this shape is part of the selection,
+    // move all selected shapes together
+    if (currentTool === 'multiselect' && selectedIds?.includes(shapeId)) {
+      const initialPositions = e.target.getAttr('initialPositions');
+      if (initialPositions) {
+        const draggedShape = shapes.find(s => s.id === shapeId);
+        if (draggedShape) {
+          const deltaX = newPos.x - initialPositions[shapeId].x;
+          const deltaY = newPos.y - initialPositions[shapeId].y;
+          
+          // Move all other selected shapes by the same delta
+          selectedIds?.forEach(id => {
+            if (id !== shapeId) {
+              const initialPos = initialPositions[id];
+              if (initialPos) {
+                updateDragPosition(id, initialPos.x + deltaX, initialPos.y + deltaY);
+              }
+            }
+          });
+        }
+      }
+    }
   };
 
   // Handle shape drag end - optimized cleanup
@@ -260,17 +303,52 @@ const Canvas = () => {
     const shapeId = e.target.id();
     const newPos = e.target.position();
     
-    // End optimized drag tracking
-    await endDrag(shapeId);
+    console.log(`🏁 Drag end for shape ${shapeId} at position:`, newPos);
     
-    // Update final position in Firestore
+    // End optimized drag tracking for the dragged shape
+    console.log(`🧹 Calling endDrag for shape ${shapeId}`);
+    await endDrag(shapeId);
+    console.log(`✅ endDrag completed for shape ${shapeId}`);
+    
+    // Update final position in Firestore for the dragged shape
     try {
+      console.log(`📝 Updating final position in Firestore for shape ${shapeId}`);
       await updateShape(shapeId, {
         x: newPos.x,
         y: newPos.y
       });
+      console.log(`✅ Final position updated in Firestore for shape ${shapeId}`);
     } catch (error) {
       console.error('Error updating position:', error);
+    }
+    
+    // If we're in multi-select mode and this shape is part of the selection,
+    // update all selected shapes' final positions
+    if (currentTool === 'multiselect' && selectedIds?.includes(shapeId)) {
+      const initialPositions = e.target.getAttr('initialPositions');
+      if (initialPositions) {
+        const deltaX = newPos.x - initialPositions[shapeId].x;
+        const deltaY = newPos.y - initialPositions[shapeId].y;
+        
+        // Update all other selected shapes' final positions
+        const updatePromises = selectedIds?.map(async (id) => {
+          if (id !== shapeId) {
+            const initialPos = initialPositions[id];
+            if (initialPos) {
+              const finalX = initialPos.x + deltaX;
+              const finalY = initialPos.y + deltaY;
+              
+              try {
+                await updateShape(id, { x: finalX, y: finalY });
+              } catch (error) {
+                console.error(`Error updating position for shape ${id}:`, error);
+              }
+            }
+          }
+        });
+        
+        await Promise.all(updatePromises);
+      }
     }
     
     // DO NOT unlock the shape - it should stay locked and selected
@@ -414,6 +492,17 @@ const Canvas = () => {
             const realTimePos = realTimePositions[shape.id];
             const isBeingMovedByOther = realTimePos && realTimePos.updatedBy !== currentUser?.uid;
             
+            // Debug logging for movement status
+            if (realTimePos) {
+              console.log(`🔄 Shape ${shape.id} movement status:`, {
+                realTimePos,
+                isBeingMovedByOther,
+                currentUser: currentUser?.uid,
+                timestamp: realTimePos.timestamp,
+                age: Date.now() - realTimePos.timestamp
+              });
+            }
+            
             // Get smooth interpolated position only for remote users' movements
             const smoothRemotePos = realTimePos ? 
               getSmoothRemotePosition(shape.id, realTimePos, currentUser?.uid) : null;
@@ -430,8 +519,10 @@ const Canvas = () => {
                 key={shape.id}
                 shape={displayShape}
                 isSelected={shape.id === selectedId}
+                isMultiSelected={selectedIds?.includes(shape.id) || false}
                 isBeingMovedByOther={isBeingMovedByOther}
                 onSelect={selectShape}
+                onToggleSelection={toggleShapeSelection}
                 onDragStart={handleShapeDragStart}
                 onDragMove={handleShapeDragMove}
                 onDragEnd={handleShapeDragEnd}
@@ -464,6 +555,25 @@ const Canvas = () => {
         </Layer>
       </Stage>
 
+      {/* Bulk Delete Button for Multi-Selected Shapes */}
+      {selectedIds?.length > 1 && (
+        <div
+          className="fixed top-20 right-4 z-50"
+          style={{
+            transform: `scale(${scale})`,
+            transformOrigin: 'top right'
+          }}
+        >
+          <button
+            onClick={deleteSelectedShapes}
+            className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg shadow-lg transition-colors duration-200 flex items-center gap-2"
+            title={`Delete ${selectedIds?.length || 0} selected shapes`}
+          >
+            <span className="text-lg">🗑️</span>
+            <span>Delete {selectedIds?.length || 0} shapes</span>
+          </button>
+        </div>
+      )}
 
       {/* Inline Text Editor */}
       {editingTextId && (() => {
@@ -473,13 +583,14 @@ const Canvas = () => {
             <InlineTextEditor
               x={shape.x * scale + stagePos.x}
               y={shape.y * scale + stagePos.y}
-              width={shape.width}
-              height={shape.height}
+              width={shape.width * scale}
+              height={shape.height * scale}
               value={editingText}
               onChange={setEditingText}
               onSave={handleTextSave}
               onCancel={handleTextCancel}
               scale={scale}
+              fontSize={shape.fontSize || 14}
             />
           );
         }

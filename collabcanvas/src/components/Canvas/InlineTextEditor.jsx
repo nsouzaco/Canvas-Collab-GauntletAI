@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 
-const InlineTextEditor = ({ x, y, width, height, value, onChange, onSave, onCancel, scale = 1 }) => {
+const InlineTextEditor = ({ x, y, width, height, value, onChange, onSave, onCancel, scale = 1, fontSize = 14 }) => {
   const textareaRef = useRef(null);
 
   useEffect(() => {
@@ -32,7 +32,7 @@ const InlineTextEditor = ({ x, y, width, height, value, onChange, onSave, onCanc
         top: `${y * scale}px`,
         width: `${width * scale}px`,
         height: `${height * scale}px`,
-        fontSize: `${18 * scale}px`,
+        fontSize: `${fontSize * scale}px`,
         fontFamily: 'Inter, system-ui, sans-serif',
         textAlign: 'center',
         border: '2px solid #3b82f6',

@@ -87,9 +87,9 @@ const handleCreateOperation = async (parsedCommand, operations) => {
   const { type, color, position, size, text } = parsedCommand;
   
   
-  // Validate required fields
-  if (!type || !['rectangle', 'circle', 'text'].includes(type)) {
-    throw new Error('Invalid shape type for creation');
+  // Trust the LLM to provide valid shape types - no strict validation
+  if (!type) {
+    throw new Error('Shape type is required');
   }
 
   // For AI-created shapes, we'll use the same positioning logic as manual creation
@@ -147,9 +147,29 @@ const handleCreateOperation = async (parsedCommand, operations) => {
     strokeWidth: 1
   };
   
-  // Simple text handling - trust the LLM to do the smart extraction
+  // Handle shape-specific properties - let LLM determine the best defaults
   if (type === 'text') {
     shapeData.text = handleTextContent(text);
+  } else if (type === 'stickyNote' || type === 'sticky' || type === 'note') {
+    shapeData.text = text || 'Remember to:\n\n• Buy groceries\n• Call mom\n• Finish project\n• Water plants';
+    shapeData.width = 300;
+    shapeData.height = 350;
+  } else if (type === 'card') {
+    shapeData.title = text?.title || 'Card Title';
+    shapeData.content = text?.content || 'This is a card with some content. You can edit this text by double-clicking.';
+    shapeData.width = 280;
+    shapeData.height = 200;
+  } else if (type === 'list' || type === 'checklist' || type === 'todo') {
+    shapeData.title = text?.title || 'Project Tasks';
+    shapeData.items = text?.items || ['Design user interface', 'Implement authentication', 'Add real-time features', 'Write documentation', 'Deploy to production'];
+    shapeData.width = 280;
+    shapeData.height = 320;
+  }
+  
+  // For any other shape types, use default dimensions
+  if (!shapeData.width || !shapeData.height) {
+    shapeData.width = sizeDimensions.width;
+    shapeData.height = sizeDimensions.height;
   }
   
   
@@ -162,17 +182,33 @@ const handleCreateOperation = async (parsedCommand, operations) => {
     fill: shapeData.fill,
     stroke: shapeData.stroke,
     strokeWidth: shapeData.strokeWidth,
-    text: shapeData.text
+    text: shapeData.text,
+    title: shapeData.title,
+    content: shapeData.content,
+    items: shapeData.items
   };
   
   
   const shapeId = await operations.createShape(shapeData.type, shapeCreationData);
   
   
+  // Create appropriate success message based on shape type
+  let message = `Created ${color || 'default'} ${type}`;
+  
+  if (type === 'text' && shapeData.text) {
+    message += ` with text "${shapeData.text}"`;
+  } else if ((type === 'stickyNote' || type === 'sticky' || type === 'note') && shapeData.text) {
+    message += ` with notes`;
+  } else if (type === 'card' && shapeData.title) {
+    message += ` titled "${shapeData.title}"`;
+  } else if ((type === 'list' || type === 'checklist' || type === 'todo') && shapeData.title) {
+    message += ` titled "${shapeData.title}" with ${shapeData.items?.length || 0} items`;
+  }
+  
   return {
     operation: 'create',
     shapeId,
-    message: `Created ${color || 'text'} ${type}${shapeData.text ? ` with text "${shapeData.text}"` : ''}`
+    message
   };
 };
 
@@ -281,14 +317,15 @@ export const validateAICommand = (parsedCommand) => {
     errors.push('Invalid operation type. Must be create, move, delete, or resize.');
   }
 
-  if (parsedCommand.confidence < 0.3) {
-    errors.push('Command confidence too low. Please be more specific.');
-  }
+  // Trust the LLM - remove confidence validation
+  // if (parsedCommand.confidence < 0.3) {
+  //   errors.push('Command confidence too low. Please be more specific.');
+  // }
 
   // Validate operation-specific requirements
   if (parsedCommand.operation === 'create') {
-    if (!parsedCommand.type || !['rectangle', 'circle', 'text'].includes(parsedCommand.type)) {
-      errors.push('Invalid shape type for creation');
+    if (!parsedCommand.type) {
+      errors.push('Shape type is required for creation');
     }
   }
 

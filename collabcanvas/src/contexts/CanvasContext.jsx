@@ -15,6 +15,7 @@ export const useCanvas = () => {
 
 export const CanvasProvider = ({ children }) => {
   const [selectedId, setSelectedId] = useState(null);
+  const [selectedIds, setSelectedIds] = useState([]); // Multi-selection state
   const [currentTool, setCurrentTool] = useState('select'); // Default to select tool
   const stageRef = useRef(null);
   const { currentUser } = useAuth();
@@ -113,6 +114,81 @@ export const CanvasProvider = ({ children }) => {
     }
     
     setSelectedId(null);
+    setSelectedIds([]);
+  };
+
+  // Multi-selection functions
+  const toggleShapeSelection = async (id) => {
+    if (currentTool !== 'multiselect') return;
+    
+    const shape = shapes.find(s => s.id === id);
+    if (shape && shape.lockedBy && shape.lockedBy !== currentUser?.uid) {
+      return; // Don't allow selection if locked by another user
+    }
+
+    setSelectedIds(prev => {
+      if (prev.includes(id)) {
+        // Remove from selection
+        const newSelection = prev.filter(shapeId => shapeId !== id);
+        if (newSelection.length === 0) {
+          setSelectedId(null);
+        } else if (newSelection.length === 1) {
+          setSelectedId(newSelection[0]);
+        }
+        return newSelection;
+      } else {
+        // Add to selection
+        const newSelection = [...prev, id];
+        if (newSelection.length === 1) {
+          setSelectedId(id);
+        }
+        return newSelection;
+      }
+    });
+  };
+
+  const selectMultipleShapes = async (ids) => {
+    if (currentTool !== 'multiselect') return;
+    
+    // Filter out shapes locked by other users
+    const availableIds = ids.filter(id => {
+      const shape = shapes.find(s => s.id === id);
+      return !shape || !shape.lockedBy || shape.lockedBy === currentUser?.uid;
+    });
+
+    setSelectedIds(availableIds);
+    if (availableIds.length === 1) {
+      setSelectedId(availableIds[0]);
+    } else if (availableIds.length > 1) {
+      setSelectedId(null); // Multi-selection mode
+    } else {
+      setSelectedId(null);
+    }
+  };
+
+  const clearMultiSelection = () => {
+    setSelectedIds([]);
+    setSelectedId(null);
+  };
+
+  // Bulk operations for multi-selected shapes
+  const deleteSelectedShapes = async () => {
+    for (const id of selectedIds) {
+      await deleteShape(id);
+    }
+    clearMultiSelection();
+  };
+
+  const moveSelectedShapes = async (deltaX, deltaY) => {
+    for (const id of selectedIds) {
+      const shape = shapes.find(s => s.id === id);
+      if (shape) {
+        await updateShape(id, { 
+          x: shape.x + deltaX, 
+          y: shape.y + deltaY 
+        });
+      }
+    }
   };
 
   // AI-powered operations (create, move, delete, resize)
@@ -158,6 +234,7 @@ export const CanvasProvider = ({ children }) => {
   const value = {
     shapes,
     selectedId,
+    selectedIds,
     currentTool,
     setCurrentTool,
     stageRef,
@@ -168,6 +245,11 @@ export const CanvasProvider = ({ children }) => {
     deleteShape,
     selectShape,
     deselectAll,
+    toggleShapeSelection,
+    selectMultipleShapes,
+    clearMultiSelection,
+    deleteSelectedShapes,
+    moveSelectedShapes,
     executeAIOperation,
     lockShape: lockShapeInFirebase,
     unlockShape: unlockShapeInFirebase,
