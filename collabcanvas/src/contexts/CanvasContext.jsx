@@ -30,6 +30,21 @@ export const CanvasProvider = ({ children }) => {
   // Grid visibility for exports
   const [isGridVisibleForExport, setIsGridVisibleForExport] = useState(true);
   
+  // Copy/paste functionality
+  const [clipboard, setClipboard] = useState([]);
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  
+  // Toast notifications
+  const [toast, setToast] = useState(null);
+  
+  // Show toast notification
+  const showToast = (message, type = 'info', duration = 2000) => {
+    setToast({ message, type, id: Date.now() });
+    setTimeout(() => {
+      setToast(null);
+    }, duration);
+  };
+  
   // Update undo/redo state when selected shape changes
   useEffect(() => {
     if (selectedId) {
@@ -453,6 +468,18 @@ export const CanvasProvider = ({ children }) => {
         duplicateShape(selectedId);
       }
       
+      // Copy selected shapes (Cmd+C)
+      if ((e.metaKey || e.ctrlKey) && e.key === 'c') {
+        e.preventDefault();
+        copyShapes();
+      }
+      
+      // Paste shapes (Cmd+V)
+      if ((e.metaKey || e.ctrlKey) && e.key === 'v') {
+        e.preventDefault();
+        pasteShapes();
+      }
+      
       // Arrow keys to move selected shape
       if (selectedId && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
         e.preventDefault();
@@ -463,6 +490,122 @@ export const CanvasProvider = ({ children }) => {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [selectedId, undo, redo, deleteShape]);
+
+  // Copy selected shapes to clipboard
+  const copyShapes = () => {
+    if (!selectedId && (!selectedIds || selectedIds.length === 0)) {
+      showToast('Select a shape to copy', 'warning');
+      return;
+    }
+    
+    const shapesToCopy = [];
+    
+    if (selectedIds && selectedIds.length > 1) {
+      // Multi-select: copy all selected shapes
+      selectedIds.forEach(id => {
+        const shape = shapes.find(s => s.id === id);
+        if (shape) {
+          shapesToCopy.push({
+            ...shape,
+            originalId: shape.id // Store original ID for reference
+          });
+        }
+      });
+    } else if (selectedId) {
+      // Single select: copy the selected shape
+      const shape = shapes.find(s => s.id === selectedId);
+      if (shape) {
+        shapesToCopy.push({
+          ...shape,
+          originalId: shape.id
+        });
+      }
+    }
+    
+    if (shapesToCopy.length > 0) {
+      setClipboard(shapesToCopy);
+      showToast(`Copied ${shapesToCopy.length} shape${shapesToCopy.length > 1 ? 's' : ''}`, 'success');
+    }
+  };
+  
+  // Paste shapes from clipboard
+  const pasteShapes = async () => {
+    if (clipboard.length === 0) {
+      showToast('Nothing to paste', 'warning');
+      return;
+    }
+    
+    const pastedShapes = [];
+    const offset = 20; // Offset for pasted shapes
+    
+    try {
+      for (let i = 0; i < clipboard.length; i++) {
+        const shapeData = clipboard[i];
+        
+        // Calculate new position with offset
+        const newPosition = {
+          x: shapeData.x + offset,
+          y: shapeData.y + offset
+        };
+        
+        // Create new shape data
+        const newShapeData = {
+          type: shapeData.type,
+          x: newPosition.x,
+          y: newPosition.y,
+          width: shapeData.width,
+          height: shapeData.height,
+          fill: shapeData.fill,
+          stroke: shapeData.stroke,
+          strokeWidth: shapeData.strokeWidth,
+          text: shapeData.text,
+          title: shapeData.title,
+          content: shapeData.content,
+          items: shapeData.items,
+          fontSize: shapeData.fontSize,
+          rotation: shapeData.rotation || 0
+        };
+        
+        // Create the shape
+        const newShapeId = await addShapeToFirebase(newShapeData.type, newShapeData);
+        
+        if (newShapeId) {
+          pastedShapes.push(newShapeId);
+          
+          // Add create operation to history
+          try {
+            if (historyManager.current && typeof historyManager.current.addOperation === 'function') {
+              historyManager.current.addOperation({
+                type: 'create',
+                shapeId: newShapeId,
+                shapeType: newShapeData.type,
+                position: newPosition,
+                userId: currentUser?.uid
+              });
+            }
+          } catch (error) {
+            console.error('Error adding paste operation to history:', error);
+          }
+        }
+      }
+      
+      if (pastedShapes.length > 0) {
+        // Select the pasted shapes
+        if (pastedShapes.length === 1) {
+          await selectShape(pastedShapes[0]);
+        } else {
+          // Multi-select pasted shapes
+          setSelectedIds(pastedShapes);
+          setSelectedId(null);
+        }
+        
+        showToast(`Pasted ${pastedShapes.length} shape${pastedShapes.length > 1 ? 's' : ''}`, 'success');
+      }
+      
+    } catch (error) {
+      console.error('Error pasting shapes:', error);
+    }
+  };
 
   // Duplicate shape function
   const duplicateShape = async (shapeId) => {
@@ -610,6 +753,13 @@ export const CanvasProvider = ({ children }) => {
     // Keyboard shortcuts
     duplicateShape,
     moveShapeWithArrow,
+    // Copy/paste functionality
+    copyShapes,
+    pasteShapes,
+    clipboard,
+    // Toast notifications
+    toast,
+    showToast,
     // Grid visibility for exports
     isGridVisibleForExport,
     toggleGridVisibilityForExport

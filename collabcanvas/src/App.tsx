@@ -86,6 +86,7 @@ function App() {
           <div className="absolute bottom-4 right-4 z-10">
             <ZoomControls />
           </div>
+          
         </div>
         
         {/* Connection Status Indicator */}

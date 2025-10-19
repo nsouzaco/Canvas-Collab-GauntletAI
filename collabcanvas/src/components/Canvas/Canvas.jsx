@@ -14,6 +14,7 @@ import InlineTextEditor from './InlineTextEditor';
 import Cursor from '../Collaboration/Cursor';
 import PerformanceDashboard from '../Debug/PerformanceDashboard';
 import PerformanceTester from '../Performance/PerformanceTester';
+import Toast from './Toast';
 
 const GRID_SIZE = 20;
 
@@ -70,7 +71,8 @@ const Canvas = ({ snapToGridEnabled: propSnapToGridEnabled }) => {
     updateRealTimePosition,
     clearRealTimePosition,
     executeAIOperation,
-    isGridVisibleForExport
+    isGridVisibleForExport,
+    toast
   } = useCanvas();
   const { currentUser } = useAuth();
   const { onlineUsers } = usePresence();
@@ -614,6 +616,9 @@ const Canvas = ({ snapToGridEnabled: propSnapToGridEnabled }) => {
       
       {/* Performance Tester */}
       <PerformanceTester />
+      
+      {/* Toast Notifications */}
+      <Toast toast={toast} />
     </div>
   );
 };
