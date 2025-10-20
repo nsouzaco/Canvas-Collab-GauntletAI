@@ -266,6 +266,10 @@ const Canvas = ({ snapToGridEnabled: propSnapToGridEnabled }) => {
         const shape = shapes.find(s => s.id === id);
         if (shape) {
           initialPositions[id] = { x: shape.x, y: shape.y };
+          // Start drag tracking for all multi-selected shapes
+          if (id !== shapeId) {
+            startDrag(id);
+          }
         }
       });
       e.target.setAttr('initialPositions', initialPositions);
@@ -301,6 +305,10 @@ const Canvas = ({ snapToGridEnabled: propSnapToGridEnabled }) => {
           const deltaX = newPos.x - initialPositions[shapeId].x;
           const deltaY = newPos.y - initialPositions[shapeId].y;
           
+          // Get the stage to find other shape nodes
+          const stage = e.target.getStage();
+          const layer = e.target.getLayer();
+          
           // Move all other selected shapes by the same delta
           selectedIds?.forEach(id => {
             if (id !== shapeId) {
@@ -313,10 +321,22 @@ const Canvas = ({ snapToGridEnabled: propSnapToGridEnabled }) => {
                   targetPos = snapPositionToGrid(targetPos);
                 }
                 
+                // Find the shape node on the canvas and update its position visually
+                const shapeNode = layer?.findOne(`#${id}`);
+                if (shapeNode) {
+                  shapeNode.position(targetPos);
+                }
+                
+                // Broadcast position to other users
                 updateDragPosition(id, targetPos.x, targetPos.y);
               }
             }
           });
+          
+          // Redraw the layer to show the changes
+          if (layer) {
+            layer.batchDraw();
+          }
         }
       }
     }
@@ -361,6 +381,9 @@ const Canvas = ({ snapToGridEnabled: propSnapToGridEnabled }) => {
               const finalY = initialPos.y + deltaY;
               
               try {
+                // End drag tracking for this shape
+                await endDrag(id);
+                // Update final position in Firestore
                 await updateShape(id, { x: finalX, y: finalY });
                 // Clear real-time position for each shape to remove yellow border
                 clearRealTimePosition(id);

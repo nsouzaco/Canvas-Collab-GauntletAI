@@ -74,7 +74,9 @@ export const useOptimizedPositioning = (canvasId) => {
 
   // Update position during drag with optimization
   const updateDragPosition = useCallback((shapeId, x, y) => {
-    if (!isDragging || dragShapeId !== shapeId) return;
+    // Allow position updates for any shape during a drag operation
+    // This enables multi-select where multiple shapes move together
+    if (!isDragging) return;
 
     // Record render cycle for performance monitoring
     recordRenderCycle();
@@ -107,16 +109,18 @@ export const useOptimizedPositioning = (canvasId) => {
 
     // Store current position
     lastPositionRef.current[shapeId] = { x, y };
-  }, [isDragging, dragShapeId, throttledUpdatePosition, debouncedFinalUpdate, recordRenderCycle]);
+  }, [isDragging, throttledUpdatePosition, debouncedFinalUpdate, recordRenderCycle]);
 
   // End drag operation
   const endDrag = useCallback(async (shapeId) => {
-    if (dragShapeId !== shapeId) return;
-
-    setIsDragging(false);
-    setDragShapeId(null);
+    // Only reset the dragging state if this is the shape that initiated the drag
+    if (dragShapeId === shapeId) {
+      setIsDragging(false);
+      setDragShapeId(null);
+    }
     
-    // Clear real-time position from database
+    // Clear real-time position from database for any shape
+    // This allows multi-selected shapes to all clear their positions
     try {
       await clearShapePosition(canvasId, shapeId);
     } catch (error) {

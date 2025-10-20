@@ -376,6 +376,9 @@ export const CanvasProvider = ({ children, canvasId }) => {
           setSelectedId(null);
         } else if (newSelection.length === 1) {
           setSelectedId(newSelection[0]);
+        } else {
+          // Multiple shapes still selected, keep selectedId null
+          setSelectedId(null);
         }
         return newSelection;
       } else {
@@ -383,6 +386,9 @@ export const CanvasProvider = ({ children, canvasId }) => {
         const newSelection = [...prev, id];
         if (newSelection.length === 1) {
           setSelectedId(id);
+        } else {
+          // Multiple shapes selected, clear selectedId so all show multi-select border
+          setSelectedId(null);
         }
         return newSelection;
       }
@@ -768,7 +774,10 @@ export const CanvasProvider = ({ children, canvasId }) => {
           return shapeId;
         },
         moveShape: async (shapeId, x, y) => {
-          return await updateShape(shapeId, { x, y });
+          console.log('🚀 operations.moveShape called with:', { shapeId, x, y });
+          const result = await updateShape(shapeId, { x, y });
+          console.log('🚀 operations.moveShape updateShape result:', result);
+          return result;
         },
         deleteShape: async (shapeId) => {
           return await deleteShape(shapeId);
