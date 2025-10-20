@@ -1,9 +1,11 @@
 import { useState, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useCanvas } from '../contexts/CanvasContext';
 import { updateCursorPosition } from '../services/presence';
 
 export const useCursors = (stagePos, scale) => {
   const { currentUser } = useAuth();
+  const { canvasId } = useCanvas();
   const [cursorPosition, setCursorPosition] = useState({ x: 0, y: 0 });
 
   // Throttle cursor updates to avoid too many Firebase writes
@@ -16,13 +18,13 @@ export const useCursors = (stagePos, scale) => {
         const now = Date.now();
         if (now - lastUpdate > throttleDelay) {
           lastUpdate = now;
-          if (currentUser) {
-            updateCursorPosition(currentUser.uid, x, y);
+          if (currentUser && canvasId) {
+            updateCursorPosition(canvasId, currentUser.uid, x, y);
           }
         }
       };
     })(),
-    [currentUser]
+    [currentUser, canvasId]
   );
 
   // Handle mouse movement

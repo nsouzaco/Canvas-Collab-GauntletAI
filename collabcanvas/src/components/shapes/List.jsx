@@ -5,9 +5,11 @@ const List = ({
   shape, 
   isSelected, 
   isMultiSelected, 
-  isBeingMovedByOther, 
+  isBeingMovedByOther,
+  isLockedByAnotherUser,
   onDoubleClick,
-  shapeRef
+  shapeRef,
+  onTransformMove
 }) => {
   return (
     <Group>
@@ -18,16 +20,19 @@ const List = ({
         y={0}
         width={shape.width}
         height={shape.height}
-        fill={shape.fill}
-        stroke={isSelected ? "#3b82f6" : isMultiSelected ? "#8B5CF6" : isBeingMovedByOther ? "#f59e0b" : "#E5E7EB"}
-        strokeWidth={isSelected ? 3 : isMultiSelected ? 3 : isBeingMovedByOther ? 2 : 1}
+        fill={shape.fill || "#FFFFFF"}
+        stroke={isLockedByAnotherUser ? "#ef4444" : isSelected ? "#3b82f6" : isMultiSelected ? "#8B5CF6" : isBeingMovedByOther ? "#f59e0b" : "#E5E7EB"}
+        strokeWidth={isLockedByAnotherUser ? 3 : isSelected ? 3 : isMultiSelected ? 3 : isBeingMovedByOther ? 2 : 1}
+        dashEnabled={isLockedByAnotherUser ? true : false}
+        dash={isLockedByAnotherUser ? [8, 4] : undefined}
         opacity={isBeingMovedByOther ? 0.8 : 1}
         cornerRadius={8}
         shadowColor="rgba(0,0,0,0.1)"
-        shadowBlur={4}
-        shadowOffset={{ x: 0, y: 2 }}
+        shadowBlur={6}
+        shadowOffset={{ x: 0, y: 3 }}
         onDblClick={onDoubleClick}
         onDblTap={onDoubleClick}
+        onTransformMove={onTransformMove}
       />
 
       {/* List Header Background */}

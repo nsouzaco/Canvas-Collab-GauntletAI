@@ -15,11 +15,11 @@ export default function StickyNote() {
 
     // Draw shadow
     ctx.fillStyle = 'rgba(0,0,0,0.2)';
-    ctx.fillRect(position.x + 5, position.y + 5, 300, 350);
+    ctx.fillRect(position.x + 5, position.y + 5, 200, 60);
 
     // Draw sticky note
     ctx.fillStyle = '#fef68a';
-    ctx.fillRect(position.x, position.y, 300, 350);
+    ctx.fillRect(position.x, position.y, 200, 60);
 
     // Draw lines
     ctx.strokeStyle = 'rgba(0,0,0,0.1)';
@@ -62,7 +62,7 @@ export default function StickyNote() {
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
-    if (x >= position.x && x <= position.x + 300 && y >= position.y && y <= position.y + 350) {
+    if (x >= position.x && x <= position.x + 200 && y >= position.y && y <= position.y + 60) {
       setIsDragging(true);
       setDragStart({ x: x - position.x, y: y - position.y });
     }

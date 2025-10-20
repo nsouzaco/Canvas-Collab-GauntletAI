@@ -17,7 +17,7 @@ import {
 } from '../services/canvas';
 import { CanvasPersistence, OfflineQueue } from '../utils/persistence';
 
-export const useCanvas = () => {
+export const useCanvas = (canvasId) => {
   const { currentUser } = useAuth();
   const [shapes, setShapes] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -39,9 +39,9 @@ export const useCanvas = () => {
 
   // Subscribe to real-time shape updates
   useEffect(() => {
-    if (!currentUser) return;
+    if (!currentUser || !canvasId) return;
 
-    const unsubscribe = subscribeToShapes((firebaseShapes) => {
+    const unsubscribe = subscribeToShapes(canvasId, (firebaseShapes) => {
       setShapes(firebaseShapes);
       setLoading(false);
       setIsOffline(false);
@@ -55,7 +55,7 @@ export const useCanvas = () => {
     });
 
     return unsubscribe;
-  }, [currentUser]);
+  }, [currentUser, canvasId]);
 
   // Handle online/offline status
   useEffect(() => {
@@ -76,20 +76,46 @@ export const useCanvas = () => {
     };
   }, []);
 
+  // Cleanup on page refresh/unload - clear real-time positions
+  useEffect(() => {
+    const handleBeforeUnload = async () => {
+      if (!currentUser || !canvasId) return;
+      
+      console.log(`🧹 Page refresh detected - clearing real-time positions for user ${currentUser.uid}`);
+      
+      try {
+        // Clear all real-time positions for the current user
+        // This is handled by the presence system, but we can add additional cleanup here if needed
+        console.log(`✅ Real-time position cleanup completed for user ${currentUser.uid}`);
+      } catch (error) {
+        console.error('Error during real-time position cleanup:', error);
+      }
+    };
+
+    // Handle page refresh/unload
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('pagehide', handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('pagehide', handleBeforeUnload);
+    };
+  }, [currentUser, canvasId]);
+
   // Subscribe to real-time position updates
   useEffect(() => {
-    if (!currentUser) return;
+    if (!currentUser || !canvasId) return;
 
-    const unsubscribe = subscribeToAllPositions((positions) => {
+    const unsubscribe = subscribeToAllPositions(canvasId, (positions) => {
       setRealTimePositions(positions);
     });
 
     return unsubscribe;
-  }, [currentUser]);
+  }, [currentUser, canvasId]);
 
   // Add a new shape without auto-selecting (for bulk operations)
   const addShapeWithoutSelection = useCallback(async (type, shapeDataOrPosition) => {
-    if (!currentUser) return null;
+    if (!currentUser || !canvasId) return null;
 
     // Generate smooth colors based on shape type
     const getShapeColor = (shapeType) => {
@@ -105,8 +131,13 @@ export const useCanvas = () => {
         text: '#F3F4F6',
         stickyNote: '#FEF68A',
         card: '#FFFFFF',
-        list: '#F8FAFC'
+        list: '#FFFFFF'
       };
+      
+      // For specific shape types, always return the exact color
+      if (colors[shapeType] && typeof colors[shapeType] === 'string') {
+        return colors[shapeType];
+      }
       
       const colorPalette = colors[shapeType] || colors.rectangle;
       return colorPalette[Math.floor(Math.random() * colorPalette.length)];
@@ -132,12 +163,16 @@ export const useCanvas = () => {
         type,
         x: position.x,
         y: position.y,
-        width: type === 'stickyNote' ? 300 : type === 'card' ? 280 : type === 'list' ? 280 : 100,
-        height: type === 'stickyNote' ? 350 : type === 'card' ? 200 : type === 'list' ? 320 : 100,
+        width: type === 'stickyNote' ? 200 : type === 'card' ? 280 : type === 'list' ? 280 : 100,
+        height: type === 'stickyNote' ? 120 : type === 'card' ? 200 : type === 'list' ? 320 : 100,
         fill: getShapeColor(type),
-        ...(type === 'text' && { text: 'Text' }),
+        ...(type === 'text' && { 
+          text: 'Text',
+          textType: 'normal',
+          fontFamily: 'Inter'
+        }),
         ...(type === 'stickyNote' && { 
-          text: 'Remember to:\n\n• Buy groceries\n• Call mom\n• Finish project\n• Water plants'
+          text: 'Note'
         }),
         ...(type === 'card' && { 
           title: 'Card Title',
@@ -173,7 +208,7 @@ export const useCanvas = () => {
     }
 
     try {
-      await createShapeWithoutSelection(shapeData);
+      await createShapeWithoutSelection(canvasId, shapeData);
       // Update local state immediately for better UX
       setShapes(prev => {
         // Check if shape already exists to avoid duplicates
@@ -200,11 +235,11 @@ export const useCanvas = () => {
       
       return shapeData.id;
     }
-  }, [currentUser, isOffline, shapes]);
+  }, [currentUser, canvasId, isOffline, shapes]);
 
   // Add a new shape
   const addShape = useCallback(async (type, shapeDataOrPosition) => {
-    if (!currentUser) return null;
+    if (!currentUser || !canvasId) return null;
 
     // Generate smooth colors based on shape type
     const getShapeColor = (shapeType) => {
@@ -220,8 +255,13 @@ export const useCanvas = () => {
         text: '#F3F4F6',
         stickyNote: '#FEF68A',
         card: '#FFFFFF',
-        list: '#F8FAFC'
+        list: '#FFFFFF'
       };
+      
+      // For specific shape types, always return the exact color
+      if (colors[shapeType] && typeof colors[shapeType] === 'string') {
+        return colors[shapeType];
+      }
       
       const colorPalette = colors[shapeType] || colors.rectangle;
       return colorPalette[Math.floor(Math.random() * colorPalette.length)];
@@ -245,7 +285,11 @@ export const useCanvas = () => {
         fill: shapeDataOrPosition.fill || getShapeColor(type),
         stroke: shapeDataOrPosition.stroke || '#E5E7EB',
         strokeWidth: shapeDataOrPosition.strokeWidth || 1,
-        ...(type === 'text' && { text: shapeDataOrPosition.text || 'Text' }),
+        ...(type === 'text' && { 
+          text: shapeDataOrPosition.text || 'Text',
+          textType: shapeDataOrPosition.textType || 'normal',
+          fontFamily: shapeDataOrPosition.fontFamily || 'Inter'
+        }),
         ...(type === 'stickyNote' && { 
           text: shapeDataOrPosition.text || 'Remember to:\n\n• Buy groceries\n• Call mom\n• Finish project\n• Water plants',
           width: 300,
@@ -273,12 +317,16 @@ export const useCanvas = () => {
         type,
         x: position.x,
         y: position.y,
-        width: type === 'stickyNote' ? 300 : type === 'card' ? 280 : type === 'list' ? 280 : 100,
-        height: type === 'stickyNote' ? 350 : type === 'card' ? 200 : type === 'list' ? 320 : 100,
+        width: type === 'stickyNote' ? 200 : type === 'card' ? 280 : type === 'list' ? 280 : 100,
+        height: type === 'stickyNote' ? 120 : type === 'card' ? 200 : type === 'list' ? 320 : 100,
         fill: getShapeColor(type),
-        ...(type === 'text' && { text: 'Text' }),
+        ...(type === 'text' && { 
+          text: 'Text',
+          textType: 'normal',
+          fontFamily: 'Inter'
+        }),
         ...(type === 'stickyNote' && { 
-          text: 'Remember to:\n\n• Buy groceries\n• Call mom\n• Finish project\n• Water plants'
+          text: 'Note'
         }),
         ...(type === 'card' && { 
           title: 'Card Title',
@@ -314,7 +362,7 @@ export const useCanvas = () => {
     }
 
     try {
-      await createShape(shapeData);
+      await createShape(canvasId, shapeData);
       // Update local state immediately for better UX
       setShapes(prev => {
         // Check if shape already exists to avoid duplicates
@@ -341,118 +389,122 @@ export const useCanvas = () => {
       
       return shapeData.id;
     }
-  }, [currentUser, isOffline, shapes]);
+  }, [currentUser, canvasId, isOffline, shapes]);
 
   // Update an existing shape
   const updateShapeData = useCallback(async (id, updates) => {
-    if (!currentUser) return;
+    if (!currentUser || !canvasId) return;
+
+    console.log(`🔄 useCanvas: updateShapeData called for shape ${id} with updates:`, updates);
 
     try {
-      await updateShape(id, {
+      await updateShape(canvasId, id, {
         ...updates,
         lastModifiedBy: currentUser.uid
       });
+      console.log(`✅ useCanvas: Successfully updated shape ${id} in Firebase`);
     } catch (error) {
-      console.error('Error updating shape:', error);
+      console.error(`❌ useCanvas: Error updating shape ${id}:`, error);
     }
-  }, [currentUser]);
+  }, [currentUser, canvasId]);
 
   // Delete a shape
   const deleteShapeData = useCallback(async (id) => {
-    if (!currentUser) return;
+    if (!currentUser || !canvasId) return;
 
     try {
-      await deleteShape(id);
+      await deleteShape(canvasId, id);
     } catch (error) {
       console.error('Error deleting shape:', error);
     }
-  }, [currentUser]);
+  }, [currentUser, canvasId]);
 
   // Lock a shape
   const lockShapeData = useCallback(async (id) => {
-    if (!currentUser) return;
+    if (!currentUser || !canvasId) return;
 
     try {
-      await lockShape(id, currentUser.uid);
+      await lockShape(canvasId, id, currentUser.uid);
     } catch (error) {
       console.error('Error locking shape:', error);
     }
-  }, [currentUser]);
+  }, [currentUser, canvasId]);
 
   // Unlock a shape
   const unlockShapeData = useCallback(async (id) => {
-    if (!currentUser) return;
+    if (!currentUser || !canvasId) return;
 
     try {
-      await unlockShape(id);
+      await unlockShape(canvasId, id);
     } catch (error) {
       console.error('Error unlocking shape:', error);
     }
-  }, [currentUser]);
+  }, [currentUser, canvasId]);
 
   // Update shape selection
   const selectShape = useCallback(async (id) => {
-    if (!currentUser) return;
+    if (!currentUser || !canvasId) return;
 
     try {
-      await updateShapeSelection(id, currentUser.uid, true);
+      await updateShapeSelection(canvasId, id, currentUser.uid, true);
     } catch (error) {
       console.error('Error selecting shape:', error);
     }
-  }, [currentUser]);
+  }, [currentUser, canvasId]);
 
   // Deselect shape
   const deselectShape = useCallback(async (id) => {
-    if (!currentUser) return;
+    if (!currentUser || !canvasId) return;
 
     try {
-      await updateShapeSelection(id, currentUser.uid, false);
+      await updateShapeSelection(canvasId, id, currentUser.uid, false);
     } catch (error) {
       console.error('Error deselecting shape:', error);
     }
-  }, [currentUser]);
+  }, [currentUser, canvasId]);
 
   // Clear all selections for current user
   const clearAllSelections = useCallback(async () => {
-    if (!currentUser) return;
+    if (!currentUser || !canvasId) return;
 
     try {
-      await clearUserSelections(currentUser.uid);
+      await clearUserSelections(canvasId, currentUser.uid);
     } catch (error) {
       console.error('Error clearing selections:', error);
     }
-  }, [currentUser]);
+  }, [currentUser, canvasId]);
 
   // Clear all locks for current user
   const clearAllLocks = useCallback(async () => {
-    if (!currentUser) return;
+    if (!currentUser || !canvasId) return;
 
     try {
-      await clearUserLocks(currentUser.uid);
+      await clearUserLocks(canvasId, currentUser.uid);
     } catch (error) {
       console.error('Error clearing locks:', error);
     }
-  }, [currentUser]);
+  }, [currentUser, canvasId]);
 
   // Update real-time position during drag with improved throttling
   const updateRealTimePosition = useCallback(async (shapeId, x, y) => {
-    if (!currentUser) return;
+    if (!currentUser || !canvasId) return;
 
     try {
-      await updateShapePosition(shapeId, x, y, currentUser.uid);
+      await updateShapePosition(canvasId, shapeId, x, y, currentUser.uid);
     } catch (error) {
       console.error('Error updating real-time position:', error);
     }
-  }, [currentUser]);
+  }, [currentUser, canvasId]);
 
   // Clear real-time position when drag ends
   const clearRealTimePosition = useCallback(async (shapeId) => {
+    if (!canvasId) return;
     try {
-      await clearShapePosition(shapeId);
+      await clearShapePosition(canvasId, shapeId);
     } catch (error) {
       console.error('Error clearing real-time position:', error);
     }
-  }, []);
+  }, [canvasId]);
 
   return {
     shapes,

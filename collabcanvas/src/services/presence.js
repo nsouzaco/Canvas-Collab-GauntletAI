@@ -1,12 +1,10 @@
 import { ref, set, onDisconnect, onValue, remove, update } from 'firebase/database';
 import { rtdb } from './firebase';
 
-const CANVAS_ID = 'global-canvas-v1';
-
 // Set user as online
-export const setUserOnline = async (userId, displayName, cursorColor) => {
+export const setUserOnline = async (canvasId, userId, displayName, cursorColor) => {
   try {
-    const userRef = ref(rtdb, `sessions/${CANVAS_ID}/${userId}`);
+    const userRef = ref(rtdb, `sessions/${canvasId}/${userId}`);
     
     const userData = {
       displayName,
@@ -28,9 +26,9 @@ export const setUserOnline = async (userId, displayName, cursorColor) => {
 };
 
 // Refresh user presence (for reconnection scenarios)
-export const refreshUserPresence = async (userId, displayName, cursorColor) => {
+export const refreshUserPresence = async (canvasId, userId, displayName, cursorColor) => {
   try {
-    const userRef = ref(rtdb, `sessions/${CANVAS_ID}/${userId}`);
+    const userRef = ref(rtdb, `sessions/${canvasId}/${userId}`);
     
     const updateData = {
       lastSeen: Date.now(),
@@ -47,9 +45,9 @@ export const refreshUserPresence = async (userId, displayName, cursorColor) => {
 };
 
 // Set user as offline
-export const setUserOffline = async (userId) => {
+export const setUserOffline = async (canvasId, userId) => {
   try {
-    const userRef = ref(rtdb, `sessions/${CANVAS_ID}/${userId}`);
+    const userRef = ref(rtdb, `sessions/${canvasId}/${userId}`);
     await remove(userRef);
   } catch (error) {
     console.error('Error setting user offline:', error);
@@ -58,9 +56,9 @@ export const setUserOffline = async (userId) => {
 };
 
 // Update cursor position
-export const updateCursorPosition = async (userId, x, y) => {
+export const updateCursorPosition = async (canvasId, userId, x, y) => {
   try {
-    const userRef = ref(rtdb, `sessions/${CANVAS_ID}/${userId}`);
+    const userRef = ref(rtdb, `sessions/${canvasId}/${userId}`);
     
     const updateData = {
       cursorX: x,
@@ -77,8 +75,8 @@ export const updateCursorPosition = async (userId, x, y) => {
 };
 
 // Subscribe to presence changes
-export const subscribeToPresence = (callback) => {
-  const presenceRef = ref(rtdb, `sessions/${CANVAS_ID}`);
+export const subscribeToPresence = (canvasId, callback) => {
+  const presenceRef = ref(rtdb, `sessions/${canvasId}`);
   
   return onValue(presenceRef, (snapshot) => {
 

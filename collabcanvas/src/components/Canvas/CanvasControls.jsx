@@ -1,11 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useCanvas } from '../../contexts/CanvasContext';
 import { usePresence } from '../../hooks/usePresence';
 import PresenceList from '../Collaboration/PresenceList';
 import AIChatInput from '../AI/AIChatInput';
 
 const CanvasControls = () => {
-  const { shapes, executeAIOperation, isOffline, lastSyncTime } = useCanvas();
+  const { shapes, executeAIOperation, isOffline, lastSyncTime, canvasMetadata } = useCanvas();
+  const [isCollapsed, setIsCollapsed] = useState(false);
   
   // Get online users for editing indicators
   const { onlineUsers, isOffline: presenceOffline } = usePresence();
@@ -17,7 +18,25 @@ const CanvasControls = () => {
   const isOfflineMode = isOffline || presenceOffline;
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 w-64">
+    <div className="relative">
+      {/* Collapse/Expand Button */}
+      <button
+        onClick={() => setIsCollapsed(!isCollapsed)}
+        className="absolute -right-3 top-4 z-20 bg-white border border-gray-200 rounded-full p-1.5 shadow-sm hover:shadow-md hover:bg-gray-50 transition-all duration-200"
+        title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+      >
+        <svg
+          className={`w-4 h-4 text-gray-600 transition-transform duration-200 ${isCollapsed ? 'rotate-180' : ''}`}
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+        </svg>
+      </button>
+
+      {/* Sidebar Content */}
+      <div className={`bg-white rounded-xl shadow-sm border border-gray-100 transition-all duration-300 ${isCollapsed ? 'w-0 opacity-0 overflow-hidden' : 'w-64 opacity-100'}`}>
       {/* Connection Status */}
       {isOfflineMode && (
         <div className="p-3 bg-amber-50 border-b border-amber-200">
@@ -68,8 +87,10 @@ const CanvasControls = () => {
         <AIChatInput
           isVisible={true}
           onToggle={() => {}} // No toggle needed since it's always visible in sidebar
-          onShapeCreate={executeAIOperation}
+          canvasMetadata={canvasMetadata}
+          onShapeCreate={(parsedCommand, originalCommand, conversationHistory) => executeAIOperation(parsedCommand, originalCommand, conversationHistory, canvasMetadata)}
         />
+      </div>
       </div>
     </div>
   );
