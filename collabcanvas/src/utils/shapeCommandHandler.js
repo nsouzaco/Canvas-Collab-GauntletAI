@@ -83,9 +83,11 @@ export const getSizeDimensions = (sizeDesc, shapeType) => {
 /**
  * Calculate position based on relative position and canvas dimensions
  * @param {Object} position - Position object with x, y, relative
+ * @param {Object} currentPosition - Current position of the shape (for relative movements)
  * @returns {Object} Calculated position {x, y}
  */
-export const calculatePosition = (position) => {
+export const calculatePosition = (position, currentPosition = null) => {
+  console.log('🧮 calculatePosition called with:', { position, currentPosition });
   
   // Use the same stage position calculation as Canvas.jsx
   const stagePos = {
@@ -98,6 +100,12 @@ export const calculatePosition = (position) => {
   const canvasCenterX = CANVAS_WIDTH / 2;
   const canvasCenterY = CANVAS_HEIGHT / 2;
   
+  // Canvas bounds for movement
+  const CANVAS_WIDTH_ACTUAL = Math.min(1200, window.innerWidth - 300);
+  const CANVAS_HEIGHT_ACTUAL = 1000;
+  const margin = 50;
+  
+  console.log('📐 Canvas dimensions:', { CANVAS_WIDTH_ACTUAL, CANVAS_HEIGHT_ACTUAL });
   
   if (!position) {
     // Use the EXACT same logic as manual shape creation (ShapeToolbar.jsx)
@@ -139,26 +147,63 @@ export const calculatePosition = (position) => {
     return randomPos;
   }
 
-  // If absolute position is provided, use it
-  if (position.x !== undefined && position.y !== undefined) {
-    return { x: position.x, y: position.y };
-  }
-
   // Calculate relative position within the canvas
   const { relative } = position;
-  if (!relative) {
-    const centerPos = { 
-      x: canvasCenterX, 
-      y: canvasCenterY 
-    };
-    return centerPos;
-  }
-
-  const margin = 50; // Margin from edges
   
+  // IMPORTANT: Check for relative keyword FIRST before checking x/y coordinates
+  // The AI sometimes sends both relative and x/y, and relative should take priority
+  if (relative) {
+  const relativeStr = relative.toLowerCase();
+  console.log('🔍 Processing relative position:', relativeStr);
+  
+  // First, if we have a currentPosition and the keyword is a directional word,
+  // treat it as a RELATIVE movement, not an absolute position
+  if (currentPosition) {
+    // Use 15% of current coordinate value for relative movements
+    const MOVEMENT_PERCENTAGE = 0.15;
+    const MOVEMENT_OFFSET_X = Math.max(50, Math.abs(currentPosition.x) * MOVEMENT_PERCENTAGE);
+    const MOVEMENT_OFFSET_Y = Math.max(50, Math.abs(currentPosition.y) * MOVEMENT_PERCENTAGE);
+    
+    console.log('📏 Movement offsets (15% of current position):', { 
+      MOVEMENT_OFFSET_X, 
+      MOVEMENT_OFFSET_Y, 
+      currentX: currentPosition.x, 
+      currentY: currentPosition.y 
+    });
+    
+    // Check for directional movement keywords
+    if (relativeStr === 'right' || relativeStr.includes('right') || relativeStr.includes('east')) {
+      console.log('➡️ Moving right (relative)');
+      const newX = Math.min(currentPosition.x + MOVEMENT_OFFSET_X, CANVAS_WIDTH_ACTUAL - margin);
+      console.log('➡️ New position:', { x: newX, y: currentPosition.y });
+      return { x: newX, y: currentPosition.y };
+    }
+    if (relativeStr === 'left' || relativeStr.includes('left') || relativeStr.includes('west')) {
+      console.log('⬅️ Moving left (relative)');
+      const newX = Math.max(currentPosition.x - MOVEMENT_OFFSET_X, margin);
+      console.log('⬅️ New position:', { x: newX, y: currentPosition.y });
+      return { x: newX, y: currentPosition.y };
+    }
+    if (relativeStr === 'up' || relativeStr.includes('up') || relativeStr.includes('north')) {
+      console.log('⬆️ Moving up (relative)');
+      const newY = Math.max(currentPosition.y - MOVEMENT_OFFSET_Y, margin);
+      console.log('⬆️ New position:', { x: currentPosition.x, y: newY });
+      return { x: currentPosition.x, y: newY };
+    }
+    if (relativeStr === 'down' || relativeStr.includes('down') || relativeStr.includes('south')) {
+      console.log('⬇️ Moving down (relative)');
+      const newY = Math.min(currentPosition.y + MOVEMENT_OFFSET_Y, CANVAS_HEIGHT_ACTUAL - margin);
+      console.log('⬇️ New position:', { x: currentPosition.x, y: newY });
+      return { x: currentPosition.x, y: newY };
+    }
+  }
+  
+  // If not a directional movement with currentPosition, check for absolute position keywords
+  // These positions are absolute on the canvas
   let calculatedPos;
-  switch (relative.toLowerCase()) {
+  switch (relativeStr) {
     case 'center':
+      console.log('✅ Matched case: center');
       // Use the same canvas dimensions as manual shape creation
       const CENTER_CANVAS_WIDTH = Math.min(1200, window.innerWidth - 300);
       const CENTER_CANVAS_HEIGHT = 1000;
@@ -197,6 +242,7 @@ export const calculatePosition = (position) => {
       };
       break;
     
+    // These are absolute positions (only reached if no currentPosition or not a directional word)
     case 'top':
       calculatedPos = { 
         x: canvasCenterX, 
@@ -226,6 +272,8 @@ export const calculatePosition = (position) => {
       break;
     
     default:
+      console.log('⚠️ Entered default case for unknown position:', relativeStr);
+      
       // Use the EXACT same logic as manual shape creation for unknown positions
       const DEFAULT_CANVAS_WIDTH = Math.min(1200, window.innerWidth - 300);
       const DEFAULT_CANVAS_HEIGHT = 1000;
@@ -264,7 +312,24 @@ export const calculatePosition = (position) => {
       };
   }
   
-  return calculatedPos;
+    // If we calculated a position from the switch, return it
+    if (calculatedPos) {
+      return calculatedPos;
+    }
+    
+    // Fallback to center if no match in switch
+    return { x: canvasCenterX, y: canvasCenterY };
+  }
+  
+  // If no relative keyword, check for absolute x/y coordinates
+  if (position.x !== undefined && position.y !== undefined) {
+    console.log('📍 Using absolute x/y coordinates:', { x: position.x, y: position.y });
+    return { x: position.x, y: position.y };
+  }
+  
+  // Final fallback to center
+  console.log('📍 No position info, defaulting to center');
+  return { x: canvasCenterX, y: canvasCenterY };
 };
 
 /**

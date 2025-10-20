@@ -32,7 +32,7 @@ const LandingPage = ({ onGetStarted }) => {
         
         {/* Subtitle */}
         <p className="text-xl text-gray-700 mb-12 drop-shadow-lg max-w-2xl mx-auto font-medium">
-          Create, collaborate, and bring your ideas to life with AI-powered canvas tools
+          Brainstorm, collaborate, and visualize your startup ideas on an AI-powered canvas
         </p>
         
         {/* Get Started Button */}

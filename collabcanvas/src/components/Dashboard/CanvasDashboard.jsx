@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getAllCanvases, deleteCanvas } from '../../services/canvas';
+import { signOutUser } from '../../services/auth';
 import { useAuth } from '../../contexts/AuthContext';
 import CreateCanvasModal from './CreateCanvasModal';
-import { Trash2, AlertTriangle } from 'lucide-react';
+import { Trash2, AlertTriangle, LogOut } from 'lucide-react';
 
 const CanvasDashboard = () => {
   const [canvases, setCanvases] = useState([]);
@@ -87,6 +88,20 @@ const CanvasDashboard = () => {
     setDeleteConfirm({ show: false, canvas: null });
   };
 
+  const handleSignOut = async () => {
+    try {
+      const { error } = await signOutUser();
+      if (error) {
+        setError('Failed to sign out. Please try again.');
+      } else {
+        navigate('/');
+      }
+    } catch (error) {
+      console.error('Error signing out:', error);
+      setError('Failed to sign out. Please try again.');
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -103,13 +118,26 @@ const CanvasDashboard = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
-          <div className="flex items-center mb-4">
+          <div className="flex items-center justify-between mb-4">
             <h1 
-              className="text-4xl font-bold text-blue-600 leading-tight mr-4" 
+              className="text-4xl font-bold text-blue-600 leading-tight" 
               style={{ fontFamily: "'Borel', cursive" }}
             >
               Startup Collab
             </h1>
+            <div className="flex items-center gap-4">
+              <span className="text-gray-600 text-sm">
+                {currentUser?.displayName || currentUser?.email}
+              </span>
+              <button
+                onClick={handleSignOut}
+                className="flex items-center gap-2 px-4 py-2 text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors duration-200 shadow-sm"
+                title="Sign out"
+              >
+                <LogOut className="w-4 h-4" />
+                <span className="font-medium">Sign Out</span>
+              </button>
+            </div>
           </div>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Your Canvases</h2>
           <p className="text-gray-600">Collaborate on ideas and bring your startup visions to life</p>

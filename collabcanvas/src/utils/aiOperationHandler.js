@@ -576,6 +576,9 @@ const handleCreateOperation = async (parsedCommand, operations, originalCommand 
 const handleMoveOperation = async (parsedCommand, shapes, operations) => {
   const { target, position } = parsedCommand;
   
+  console.log('🔄 handleMoveOperation - parsedCommand:', parsedCommand);
+  console.log('🔄 position object:', position);
+  
   // Find the target shape
   const targetShape = findTargetShape(shapes, target);
   
@@ -583,8 +586,15 @@ const handleMoveOperation = async (parsedCommand, shapes, operations) => {
     throw new Error(`No ${target.color} ${target.type} found to move`);
   }
 
-  // Calculate new position
-  const newPosition = calculatePosition(position);
+  console.log('🎯 Found target shape:', { id: targetShape.id, currentX: targetShape.x, currentY: targetShape.y });
+
+  // Calculate new position, passing the current shape position for relative movements
+  const currentPosition = { x: targetShape.x, y: targetShape.y };
+  console.log('📍 Current position:', currentPosition);
+  console.log('📍 Position parameter:', position);
+  
+  const newPosition = calculatePosition(position, currentPosition);
+  console.log('✨ Calculated new position:', newPosition);
   
   
   // Move the shape
@@ -593,7 +603,7 @@ const handleMoveOperation = async (parsedCommand, shapes, operations) => {
   return {
     operation: 'move',
     shapeId: targetShape.id,
-    message: `Moved ${target.color} ${target.type} to ${position.relative || 'new position'}`
+    message: `Moved ${target.color} ${target.type} ${position.relative ? position.relative : 'to new position'}`
   };
 };
 
