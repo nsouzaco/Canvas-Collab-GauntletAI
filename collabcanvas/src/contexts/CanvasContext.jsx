@@ -3,6 +3,7 @@ import { useCanvas as useCanvasHook } from '../hooks/useCanvas';
 import { useAuth } from './AuthContext';
 import { processAIOperation, validateAICommand } from '../utils/aiOperationHandler';
 import { HistoryManager, createStateSnapshot, applyStateSnapshot } from '../utils/historyManager';
+import { getCanvas } from '../services/canvas';
 
 const CanvasContext = createContext();
 
@@ -14,12 +15,57 @@ export const useCanvas = () => {
   return context;
 };
 
-export const CanvasProvider = ({ children }) => {
+export const CanvasProvider = ({ children, canvasId }) => {
   const [selectedId, setSelectedId] = useState(null);
   const [selectedIds, setSelectedIds] = useState([]); // Multi-selection state
   const [currentTool, setCurrentTool] = useState('select'); // Default to select tool
+  const [canvasMetadata, setCanvasMetadata] = useState({ name: '', description: '' });
   const stageRef = useRef(null);
   const { currentUser } = useAuth();
+
+  // If no canvasId is provided, return a loading state
+  if (!canvasId) {
+    return (
+      <CanvasContext.Provider value={{
+        canvasId: null,
+        shapes: [],
+        selectedId: null,
+        selectedIds: [],
+        currentTool: 'select',
+        setCurrentTool: () => {},
+        stageRef: null,
+        loading: true,
+        realTimePositions: {},
+        canvasMetadata: { name: '', description: '' },
+        addShape: () => {},
+        addShapeWithoutSelection: () => {},
+        updateShape: () => {},
+        deleteShape: () => {},
+        selectShape: () => {},
+        deselectAll: () => {},
+        toggleShapeSelection: () => {},
+        selectMultipleShapes: () => {},
+        clearMultiSelection: () => {},
+        deleteSelectedShapes: () => {},
+        moveSelectedShapes: () => {},
+        executeAIOperation: () => {},
+        lockShape: () => {},
+        unlockShape: () => {},
+        updateRealTimePosition: () => {},
+        clearRealTimePosition: () => {},
+        undo: () => {},
+        redo: () => {},
+        canUndo: false,
+        canRedo: false,
+        duplicateShape: () => {},
+        moveShapeWithArrow: () => {},
+        isGridVisibleForExport: true,
+        toggleGridVisibilityForExport: () => {}
+      }}>
+        {children}
+      </CanvasContext.Provider>
+    );
+  }
   
   // History management
   const historyManager = useRef(new HistoryManager());
@@ -29,6 +75,26 @@ export const CanvasProvider = ({ children }) => {
   
   // Grid visibility for exports
   const [isGridVisibleForExport, setIsGridVisibleForExport] = useState(true);
+  
+  // Fetch canvas metadata when canvasId changes
+  useEffect(() => {
+    const fetchCanvasMetadata = async () => {
+      if (canvasId) {
+        try {
+          const canvas = await getCanvas(canvasId);
+          setCanvasMetadata({
+            name: canvas.name || '',
+            description: canvas.description || ''
+          });
+        } catch (error) {
+          console.error('Error fetching canvas metadata:', error);
+          setCanvasMetadata({ name: '', description: '' });
+        }
+      }
+    };
+    
+    fetchCanvasMetadata();
+  }, [canvasId]);
   
   // Update undo/redo state when selected shape changes
   useEffect(() => {
@@ -54,6 +120,7 @@ export const CanvasProvider = ({ children }) => {
       setCanRedo(false); // Redo is disabled for now
     }
   }, [historyManager.current.history.length, selectedId, currentUser?.uid]);
+
   
   // Use the real-time canvas hook
   const {
@@ -72,7 +139,7 @@ export const CanvasProvider = ({ children }) => {
     clearAllLocks: clearAllLocksInFirebase,
     updateRealTimePosition,
     clearRealTimePosition
-  } = useCanvasHook();
+  } = useCanvasHook(canvasId);
 
   // Update history state when shapes change
   useEffect(() => {
@@ -118,25 +185,37 @@ export const CanvasProvider = ({ children }) => {
   };
 
   const updateShape = async (id, updates) => {
+    console.log(`🔄 CanvasContext: updateShape called for shape ${id} with updates:`, updates);
+    
     // Find the shape to get its current state
     const currentShape = shapes.find(s => s.id === id);
-    if (!currentShape) return;
+    if (!currentShape) {
+      console.error(`❌ CanvasContext: Shape ${id} not found`);
+      return;
+    }
     
-    // Save the previous state for undo
-    const previousState = {
-      x: currentShape.x,
-      y: currentShape.y,
-      width: currentShape.width,
-      height: currentShape.height,
-      fill: currentShape.fill,
-      text: currentShape.text,
-      fontSize: currentShape.fontSize
-    };
+    // Save the previous state for undo (only include defined values)
+    const previousState = {};
+    const propertiesToSave = [
+      'x', 'y', 'width', 'height', 'fill', 'text', 'fontSize', 
+      'textType', 'fontFamily', 'title', 'content', 'items'
+    ];
     
-    console.log('Saving previous state for undo:', previousState);
-    console.log('Updates being applied:', updates);
+    propertiesToSave.forEach(prop => {
+      if (currentShape[prop] !== undefined) {
+        previousState[prop] = currentShape[prop];
+      }
+    });
     
-    await updateShapeInFirebase(id, updates);
+    // Save previous state for undo functionality
+    
+    try {
+      await updateShapeInFirebase(id, updates);
+      console.log(`✅ CanvasContext: Successfully updated shape ${id} in Firebase`);
+    } catch (error) {
+      console.error(`❌ CanvasContext: Error updating shape ${id} in Firebase:`, error);
+      throw error;
+    }
     
     // Add update operation to history (only for current user)
     try {
@@ -540,11 +619,16 @@ export const CanvasProvider = ({ children }) => {
   };
 
   // AI-powered operations (create, move, delete, resize)
-  const executeAIOperation = async (parsedCommand) => {
+  const executeAIOperation = async (parsedCommand, originalCommand = '', conversationHistory = []) => {
     try {
       // Save current state before AI operation
       const currentSnapshot = createStateSnapshot(shapes);
-      historyManager.current.addState(currentSnapshot, `AI: ${parsedCommand.operation}`);
+      historyManager.current.addOperation({
+        type: `AI_${parsedCommand.operation}`,
+        description: `AI: ${parsedCommand.operation}`,
+        snapshot: currentSnapshot,
+        userId: currentUser?.uid
+      });
 
       // Define available operations
       const operations = {
@@ -568,7 +652,7 @@ export const CanvasProvider = ({ children }) => {
       };
 
       // Process the AI operation - LLM handles text extraction intelligently
-      const result = await processAIOperation(parsedCommand, shapes, operations);
+      const result = await processAIOperation(parsedCommand, shapes, operations, originalCommand, canvasMetadata, conversationHistory);
       
       return result;
     } catch (error) {
@@ -578,6 +662,7 @@ export const CanvasProvider = ({ children }) => {
   };
 
   const value = {
+    canvasId,
     shapes,
     selectedId,
     selectedIds,
@@ -586,6 +671,7 @@ export const CanvasProvider = ({ children }) => {
     stageRef,
     loading,
     realTimePositions,
+    canvasMetadata,
     addShape,
     addShapeWithoutSelection,
     updateShape,
@@ -614,6 +700,54 @@ export const CanvasProvider = ({ children }) => {
     isGridVisibleForExport,
     toggleGridVisibilityForExport
   };
+
+  // Cleanup on page refresh/unload - free all selected and locked shapes
+  useEffect(() => {
+    const handleBeforeUnload = async () => {
+      if (!currentUser || !canvasId) return;
+      
+      console.log(`🧹 Page refresh detected - cleaning up locks and selections for user ${currentUser.uid}`);
+      
+      try {
+        // Clear all locks and selections for the current user
+        await clearAllLocksInFirebase();
+        await clearAllSelectionsInFirebase();
+        console.log(`✅ Cleanup completed for user ${currentUser.uid}`);
+      } catch (error) {
+        console.error('Error during page refresh cleanup:', error);
+        // Continue with page unload even if cleanup fails
+      }
+    };
+
+    // Handle page refresh/unload
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    // Also handle pagehide event (more reliable on mobile)
+    window.addEventListener('pagehide', handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('pagehide', handleBeforeUnload);
+    };
+  }, [currentUser, canvasId, clearAllLocksInFirebase, clearAllSelectionsInFirebase]);
+
+  // Cleanup on component unmount (when navigating away from canvas)
+  useEffect(() => {
+    return () => {
+      if (currentUser && canvasId) {
+        console.log(`🧹 Component unmounting - cleaning up locks and selections for user ${currentUser.uid}`);
+        
+        // Use synchronous cleanup for component unmount
+        // Note: We can't use async/await in cleanup functions
+        clearAllLocksInFirebase().catch(error => {
+          console.error('Error clearing locks on unmount:', error);
+        });
+        clearAllSelectionsInFirebase().catch(error => {
+          console.error('Error clearing selections on unmount:', error);
+        });
+      }
+    };
+  }, [currentUser, canvasId, clearAllLocksInFirebase, clearAllSelectionsInFirebase]);
 
   return (
     <CanvasContext.Provider value={value}>

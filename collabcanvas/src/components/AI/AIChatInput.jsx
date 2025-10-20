@@ -3,13 +3,14 @@ import { parseShapeCommand, getCommandSuggestions } from '../../services/openai'
 import { testOpenAIKey, testEnvironmentVariables } from '../../utils/testOpenAI';
 import { AIAssistantPersistence } from '../../utils/persistence';
 
-const AIChatInput = ({ onShapeCreate, isVisible, onToggle }) => {
+const AIChatInput = ({ onShapeCreate, isVisible, onToggle, canvasMetadata = { name: '', description: '' } }) => {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [apiStatus, setApiStatus] = useState(null);
+  const [conversationHistory, setConversationHistory] = useState([]);
   const inputRef = useRef(null);
 
   // Focus input when component becomes visible
@@ -58,7 +59,15 @@ const AIChatInput = ({ onShapeCreate, isVisible, onToggle }) => {
     setError('');
 
     try {
-      const parsedCommand = await parseShapeCommand(input.trim());
+      // Add user message to conversation history
+      const userMessage = { role: 'user', content: input.trim() };
+      const updatedHistory = [...conversationHistory, userMessage];
+      
+      // Keep only last 10 messages to avoid overwhelming the API
+      const trimmedHistory = updatedHistory.slice(-10);
+      setConversationHistory(trimmedHistory);
+
+      const parsedCommand = await parseShapeCommand(input.trim(), trimmedHistory, canvasMetadata);
       
       if (parsedCommand.error) {
         setError(parsedCommand.error);
@@ -72,10 +81,12 @@ const AIChatInput = ({ onShapeCreate, isVisible, onToggle }) => {
       // }
 
       // Call the AI operation handler - LLM handles text extraction intelligently
-      const result = await onShapeCreate(parsedCommand);
+      const result = await onShapeCreate(parsedCommand, input.trim(), trimmedHistory);
       
-      // Show success message
+      // Add AI response to conversation history
       if (result && result.message) {
+        const aiMessage = { role: 'assistant', content: result.message };
+        setConversationHistory(prev => [...prev.slice(-9), aiMessage]); // Keep last 10 messages
         console.log('✅ AI operation result:', result.message);
       }
       
@@ -163,7 +174,7 @@ const AIChatInput = ({ onShapeCreate, isVisible, onToggle }) => {
             value={input}
             onChange={handleInputChange}
             onKeyDown={handleKeyDown}
-            placeholder="Try: 'draw a red circle'"
+            placeholder="Try: 'create a persona card' or 'add app features'"
             className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm placeholder-gray-400"
             disabled={isLoading}
           />
@@ -198,7 +209,11 @@ const AIChatInput = ({ onShapeCreate, isVisible, onToggle }) => {
           {isLoading ? (
             <>
               <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-              <span>Processing...</span>
+              <span>
+                {input.toLowerCase().includes('persona') || input.toLowerCase().includes('feature') || 
+                 input.toLowerCase().includes('user story') || input.toLowerCase().includes('pain point') ||
+                 input.toLowerCase().includes('competitive') ? 'Generating content...' : 'Processing...'}
+              </span>
             </>
           ) : (
             <>

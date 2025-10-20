@@ -95,9 +95,9 @@ const createShapeObject = (type, index, canvasWidth, canvasHeight) => {
     case 'stickyNote':
       return {
         ...baseShape,
-        text: `Note ${index}\n\nThis is a sticky note for testing performance with many objects.`,
+        text: `Note ${index}`,
         width: 200,
-        height: 150
+        height: 120
       };
     
     case 'card':

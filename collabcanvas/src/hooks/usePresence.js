@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useCanvas } from '../contexts/CanvasContext';
 import { setUserOnline, setUserOffline, subscribeToPresence, refreshUserPresence } from '../services/presence';
 import { getDisplayName } from '../services/auth';
 import { PresencePersistence, UserPreferencesPersistence } from '../utils/persistence';
@@ -19,6 +20,7 @@ const generateUserColor = (userId) => {
 
 export const usePresence = () => {
   const { currentUser } = useAuth();
+  const { canvasId } = useCanvas();
   const [onlineUsers, setOnlineUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isOffline, setIsOffline] = useState(false);
@@ -36,7 +38,7 @@ export const usePresence = () => {
 
   // Set user online when component mounts
   useEffect(() => {
-    if (!currentUser) return;
+    if (!currentUser || !canvasId) return;
 
     const displayName = getDisplayName(currentUser);
     const cursorColor = generateUserColor(currentUser.uid);
@@ -45,18 +47,18 @@ export const usePresence = () => {
     UserPreferencesPersistence.updatePreference('cursorColor', cursorColor);
     UserPreferencesPersistence.updatePreference('displayName', displayName);
 
-    setUserOnline(currentUser.uid, displayName, cursorColor);
+    setUserOnline(canvasId, currentUser.uid, displayName, cursorColor);
 
     return () => {
-      setUserOffline(currentUser.uid);
+      setUserOffline(canvasId, currentUser.uid);
     };
-  }, [currentUser]);
+  }, [currentUser, canvasId]);
 
   // Subscribe to presence changes
   useEffect(() => {
-    if (!currentUser) return;
+    if (!currentUser || !canvasId) return;
 
-    const unsubscribe = subscribeToPresence((users) => {
+    const unsubscribe = subscribeToPresence(canvasId, (users) => {
       setOnlineUsers(users);
       setLoading(false);
       setIsOffline(false);
@@ -66,7 +68,7 @@ export const usePresence = () => {
     });
 
     return unsubscribe;
-  }, [currentUser]);
+  }, [currentUser, canvasId]);
 
   // Handle online/offline status and presence refresh
   useEffect(() => {
@@ -74,10 +76,10 @@ export const usePresence = () => {
       console.log('🌐 Presence connection restored');
       setIsOffline(false);
       // Refresh presence when connection is restored
-      if (currentUser) {
+      if (currentUser && canvasId) {
         const displayName = getDisplayName(currentUser);
         const cursorColor = generateUserColor(currentUser.uid);
-        refreshUserPresence(currentUser.uid, displayName, cursorColor);
+        refreshUserPresence(canvasId, currentUser.uid, displayName, cursorColor);
       }
     };
 
@@ -88,36 +90,53 @@ export const usePresence = () => {
 
     // Handle visibility change (when user returns to tab)
     const handleVisibilityChange = () => {
-      if (!document.hidden && currentUser) {
+      if (!document.hidden && currentUser && canvasId) {
         console.log('👁️ User became active, refreshing presence');
         const displayName = getDisplayName(currentUser);
         const cursorColor = generateUserColor(currentUser.uid);
-        refreshUserPresence(currentUser.uid, displayName, cursorColor);
+        refreshUserPresence(canvasId, currentUser.uid, displayName, cursorColor);
       }
     };
 
 
     // Heartbeat system - refresh presence every 30 seconds
     const heartbeatInterval = setInterval(() => {
-      if (currentUser && !document.hidden) {
+      if (currentUser && canvasId && !document.hidden) {
         console.log('💓 Heartbeat: refreshing presence');
         const displayName = getDisplayName(currentUser);
         const cursorColor = generateUserColor(currentUser.uid);
-        refreshUserPresence(currentUser.uid, displayName, cursorColor);
+        refreshUserPresence(canvasId, currentUser.uid, displayName, cursorColor);
       }
     }, 30000); // 30 seconds
+
+    // Handle page refresh/unload - set user offline
+    const handleBeforeUnload = async () => {
+      if (currentUser && canvasId) {
+        console.log(`🧹 Page refresh detected - setting user ${currentUser.uid} offline`);
+        try {
+          await setUserOffline(canvasId, currentUser.uid);
+          console.log(`✅ User ${currentUser.uid} marked as offline`);
+        } catch (error) {
+          console.error('Error setting user offline on page refresh:', error);
+        }
+      }
+    };
 
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
     document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('pagehide', handleBeforeUnload);
 
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('pagehide', handleBeforeUnload);
       clearInterval(heartbeatInterval);
     };
-  }, [currentUser]);
+  }, [currentUser, canvasId]);
 
   return {
     onlineUsers,

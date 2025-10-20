@@ -12,8 +12,7 @@ import ExportControls from './ExportControls';
 import Shape from './Shape';
 import InlineTextEditor from './InlineTextEditor';
 import Cursor from '../Collaboration/Cursor';
-import PerformanceDashboard from '../Debug/PerformanceDashboard';
-import PerformanceTester from '../Performance/PerformanceTester';
+import PropertiesPanel from './PropertiesPanel';
 
 const GRID_SIZE = 20;
 
@@ -52,6 +51,7 @@ const Grid = ({ canvasWidth, canvasHeight }) => {
 
 const Canvas = ({ snapToGridEnabled: propSnapToGridEnabled }) => {
   const { 
+    canvasId,
     shapes, 
     selectedId, 
     selectedIds,
@@ -74,7 +74,7 @@ const Canvas = ({ snapToGridEnabled: propSnapToGridEnabled }) => {
   } = useCanvas();
   const { currentUser } = useAuth();
   const { onlineUsers } = usePresence();
-  const { startDrag, updateDragPosition, endDrag } = useOptimizedPositioning();
+  const { startDrag, updateDragPosition, endDrag } = useOptimizedPositioning(canvasId);
   const gridLayerRef = useRef();
   const containerRef = useRef();
   
@@ -91,7 +91,6 @@ const Canvas = ({ snapToGridEnabled: propSnapToGridEnabled }) => {
   const [scale, setScale] = useState(1);
   const [editingTextId, setEditingTextId] = useState(null);
   const [editingText, setEditingText] = useState('');
-  const [showPerformanceDashboard, setShowPerformanceDashboard] = useState(false);
   const [snapToGridEnabled, setSnapToGridEnabled] = useState(propSnapToGridEnabled ?? true);
   
 
@@ -383,7 +382,13 @@ const Canvas = ({ snapToGridEnabled: propSnapToGridEnabled }) => {
 
   // Handle shape resize
   const handleShapeResize = async (shapeId, updates) => {
-    await updateShape(shapeId, updates);
+    console.log(`🔄 Canvas: handleShapeResize called for shape ${shapeId} with updates:`, updates);
+    try {
+      await updateShape(shapeId, updates);
+      console.log(`✅ Canvas: Successfully updated shape ${shapeId}`);
+    } catch (error) {
+      console.error(`❌ Canvas: Error updating shape ${shapeId}:`, error);
+    }
   };
 
   // Handle text edit
@@ -431,11 +436,6 @@ const Canvas = ({ snapToGridEnabled: propSnapToGridEnabled }) => {
       }
       if (e.key === 'Escape') {
         deselectAll();
-      }
-      // Toggle performance dashboard with Ctrl+P
-      if (e.ctrlKey && e.key === 'p') {
-        e.preventDefault();
-        setShowPerformanceDashboard(prev => !prev);
       }
     };
 
@@ -485,8 +485,8 @@ const Canvas = ({ snapToGridEnabled: propSnapToGridEnabled }) => {
             name="background"
           />
           
-          {/* Grid lines - only show if snap-to-grid is enabled AND grid is visible for export */}
-          {(snapToGridEnabled && isGridVisibleForExport) && (
+          {/* Grid lines - always show if grid is visible for export */}
+          {isGridVisibleForExport && (
             <Grid canvasWidth={canvasDimensions.width} canvasHeight={canvasDimensions.height} />
           )}
           
@@ -609,11 +609,14 @@ const Canvas = ({ snapToGridEnabled: propSnapToGridEnabled }) => {
 
       {/* AI Chat Input - moved to sidebar */}
       
-      {/* Performance Dashboard */}
-      <PerformanceDashboard isVisible={showPerformanceDashboard} />
-      
-      {/* Performance Tester */}
-      <PerformanceTester />
+      {/* Properties Panel */}
+      <PropertiesPanel
+        selectedShape={selectedId ? shapes.find(s => s.id === selectedId) : null}
+        onUpdateShape={updateShape}
+        onDeleteShape={deleteShape}
+        onClose={() => selectShape(null)}
+        isVisible={!!selectedId && ['stickyNote', 'card', 'list'].includes(shapes.find(s => s.id === selectedId)?.type)}
+      />
     </div>
   );
 };

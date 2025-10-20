@@ -54,6 +54,28 @@ export const testCommands = [
       text: "Hello World"
     }
   },
+  {
+    input: "create a note shape",
+    expected: {
+      operation: "create",
+      type: "stickyNote",
+      color: "yellow",
+      position: { relative: "center" },
+      size: { description: "medium" },
+      text: "Remember to:\n\n• Add your notes here\n• Edit this text\n• Use bullet points"
+    }
+  },
+  {
+    input: "add a sticky note",
+    expected: {
+      operation: "create",
+      type: "stickyNote",
+      color: "yellow",
+      position: { relative: "center" },
+      size: { description: "medium" },
+      text: "Remember to:\n\n• Add your notes here\n• Edit this text\n• Use bullet points"
+    }
+  },
   // MOVE operations
   {
     input: "move the red circle to the left",
@@ -115,9 +137,101 @@ export const testCommands = [
 
 // Mock OpenAI response for testing
 export const mockOpenAIResponse = (command) => {
+  const lowerCommand = command.toLowerCase();
+  console.log('🔍 Mock response checking command:', command, 'lowercase:', lowerCommand);
+  
+  // Check for note/sticky note commands
+  if (lowerCommand.includes('note') || lowerCommand.includes('sticky') || lowerCommand.includes('post-it')) {
+    console.log('🔍 Matched note command, returning stickyNote');
+    return {
+      operation: "create",
+      type: "stickyNote",
+      color: "yellow",
+      position: { relative: "center" },
+      size: { description: "medium" },
+      text: "Note",
+      confidence: 0.9
+    };
+  }
+  
+  // Specific check for "create a note shape" command
+  if (lowerCommand === 'create a note shape' || lowerCommand === 'create note shape') {
+    return {
+      operation: "create",
+      type: "stickyNote",
+      color: "yellow",
+      position: { relative: "center" },
+      size: { description: "medium" },
+      text: "Note",
+      confidence: 0.95
+    };
+  }
+
+  // Check for semantic commands first
+  if (lowerCommand.includes('persona') || lowerCommand.includes('user persona')) {
+    return {
+      operation: "semantic_create",
+      semantic_type: "persona",
+      type: "card",
+      color: "white",
+      position: { relative: "center" },
+      size: { description: "medium" },
+      confidence: 0.9
+    };
+  }
+  
+  if (lowerCommand.includes('features') || lowerCommand.includes('app features')) {
+    return {
+      operation: "semantic_create",
+      semantic_type: "features",
+      type: "card",
+      color: "white",
+      position: { relative: "center" },
+      size: { description: "medium" },
+      confidence: 0.9
+    };
+  }
+  
+  if (lowerCommand.includes('user story') || lowerCommand.includes('user stories')) {
+    return {
+      operation: "semantic_create",
+      semantic_type: "user-story",
+      type: "card",
+      color: "white",
+      position: { relative: "center" },
+      size: { description: "medium" },
+      confidence: 0.9
+    };
+  }
+  
+  if (lowerCommand.includes('pain points') || lowerCommand.includes('problems')) {
+    return {
+      operation: "semantic_create",
+      semantic_type: "pain-points",
+      type: "card",
+      color: "white",
+      position: { relative: "center" },
+      size: { description: "medium" },
+      confidence: 0.9
+    };
+  }
+  
+  if (lowerCommand.includes('competitive analysis') || lowerCommand.includes('competitors')) {
+    return {
+      operation: "semantic_create",
+      semantic_type: "competitive-analysis",
+      type: "card",
+      color: "white",
+      position: { relative: "center" },
+      size: { description: "medium" },
+      confidence: 0.9
+    };
+  }
+  
+  // Check for regular shape commands
   const testCommand = testCommands.find(cmd => 
-    cmd.input.toLowerCase().includes(command.toLowerCase()) ||
-    command.toLowerCase().includes(cmd.input.toLowerCase())
+    cmd.input.toLowerCase().includes(lowerCommand) ||
+    lowerCommand.includes(cmd.input.toLowerCase())
   );
   
   if (testCommand) {

@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate, useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
-import { CanvasProvider } from './contexts/CanvasContext';
+import { CanvasProvider, useCanvas } from './contexts/CanvasContext';
 import LandingPage from './components/Landing/LandingPage';
 import Login from './components/Auth/Login';
 import Signup from './components/Auth/Signup';
@@ -12,48 +13,65 @@ import ZoomControls from './components/Canvas/ZoomControls';
 import ExportControls from './components/Canvas/ExportControls';
 import SnapToGridToggle from './components/Canvas/SnapToGridToggle';
 import ConnectionStatus from './components/Layout/ConnectionStatus';
+import CanvasDashboard from './components/Dashboard/CanvasDashboard';
 
-function App() {
-  const { currentUser, loading } = useAuth();
-  const [isLogin, setIsLogin] = useState(true);
-  const [showLanding, setShowLanding] = useState(true);
-  const [snapToGridEnabled, setSnapToGridEnabled] = useState(true);
+// Canvas View Component
+const CanvasView = ({ snapToGridEnabled, setSnapToGridEnabled }) => {
+  const { canvasId } = useParams();
+  const navigate = useNavigate();
 
-  // Show loading while checking auth state
-  if (loading) {
+  const handleBackToDashboard = () => {
+    navigate('/dashboard');
+  };
+
+  if (!canvasId) {
     return (
-      <div className="h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
+          <p className="text-gray-600">Loading canvas...</p>
         </div>
       </div>
     );
   }
 
-  // Show landing page if not logged in and showLanding is true
-  if (!currentUser && showLanding) {
-    return (
-      <LandingPage onGetStarted={() => setShowLanding(false)} />
-    );
-  }
-
-  // Show auth forms if not logged in
-  if (!currentUser) {
-    return isLogin ? (
-      <Login onSwitchToSignup={() => setIsLogin(false)} />
-    ) : (
-      <Signup onSwitchToLogin={() => setIsLogin(true)} />
-    );
-  }
-
-  // Show canvas if logged in
   return (
-    <CanvasProvider>
-      <div className="min-h-screen flex flex-col bg-gray-100">
-        <div className="py-3">
-          <Navbar />
-        </div>
+    <CanvasProvider canvasId={canvasId}>
+      <CanvasViewContent 
+        snapToGridEnabled={snapToGridEnabled} 
+        setSnapToGridEnabled={setSnapToGridEnabled}
+        onBackToDashboard={handleBackToDashboard}
+      />
+    </CanvasProvider>
+  );
+};
+
+// Canvas View Content Component (inside CanvasProvider)
+const CanvasViewContent = ({ snapToGridEnabled, setSnapToGridEnabled, onBackToDashboard }) => {
+  // Canvas Navbar Component (needs access to canvas context)
+  const CanvasNavbar = ({ onBackToDashboard }) => {
+    const { canvasId } = useCanvas();
+    const [canvasName, setCanvasName] = useState('');
+
+    // Get canvas name (you might want to fetch this from Firebase)
+    useEffect(() => {
+      // For now, we'll use a simple name based on canvasId
+      setCanvasName(`Canvas ${canvasId?.slice(-8) || ''}`);
+    }, [canvasId]);
+
+    return (
+      <Navbar 
+        onBackToDashboard={onBackToDashboard}
+        canvasName={canvasName}
+      />
+    );
+  };
+
+  return (
+    <div className="min-h-screen flex flex-col bg-gray-100">
+      <div className="py-3">
+        <CanvasNavbar onBackToDashboard={onBackToDashboard} />
+      </div>
         
         {/* Full-width canvas area */}
         <div className="flex-1 relative">
@@ -91,7 +109,61 @@ function App() {
         {/* Connection Status Indicator */}
         <ConnectionStatus />
       </div>
-    </CanvasProvider>
+    );
+};
+
+// Dashboard View Component
+const DashboardView = () => {
+  return <CanvasDashboard />;
+};
+
+function App() {
+  const { currentUser, loading } = useAuth();
+  const [isLogin, setIsLogin] = useState(true);
+  const [showLanding, setShowLanding] = useState(true);
+  const [snapToGridEnabled, setSnapToGridEnabled] = useState(true);
+
+  // Show loading while checking auth state
+  if (loading) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show landing page if not logged in and showLanding is true
+  if (!currentUser && showLanding) {
+    return (
+      <LandingPage onGetStarted={() => setShowLanding(false)} />
+    );
+  }
+
+  // Show auth forms if not logged in
+  if (!currentUser) {
+    return isLogin ? (
+      <Login onSwitchToSignup={() => setIsLogin(false)} />
+    ) : (
+      <Signup onSwitchToLogin={() => setIsLogin(true)} />
+    );
+  }
+
+  // Show router for authenticated users
+  return (
+    <Router>
+      <Routes>
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/dashboard" element={<DashboardView />} />
+        <Route 
+          path="/canvas/:canvasId" 
+          element={<CanvasView snapToGridEnabled={snapToGridEnabled} setSnapToGridEnabled={setSnapToGridEnabled} />} 
+        />
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      </Routes>
+    </Router>
   );
 }
 

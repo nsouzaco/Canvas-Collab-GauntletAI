@@ -19,7 +19,7 @@ import { usePerformanceMonitor } from '../utils/performanceMonitor';
  * - Reduced Firebase writes
  * - Client-side prediction
  */
-export const useOptimizedPositioning = () => {
+export const useOptimizedPositioning = (canvasId) => {
   const { currentUser } = useAuth();
   const { recordPositionUpdate, recordRenderCycle } = usePerformanceMonitor();
   const [isDragging, setIsDragging] = useState(false);
@@ -33,12 +33,12 @@ export const useOptimizedPositioning = () => {
   // Throttled update function with adaptive throttling
   const throttledUpdatePosition = useCallback(
     throttle(async (shapeId, x, y) => {
-      if (!currentUser) return;
+      if (!currentUser || !canvasId) return;
       
       const startTime = Date.now();
       
       try {
-        await updateShapePosition(shapeId, x, y, currentUser.uid);
+        await updateShapePosition(canvasId, shapeId, x, y, currentUser.uid);
         lastUpdateTimeRef.current = Date.now();
         
         // Record performance metrics
@@ -47,22 +47,22 @@ export const useOptimizedPositioning = () => {
       } catch (error) {
         console.error('Error updating position:', error);
       }
-    }, 16), // ~60 FPS for smooth updates
-    [currentUser, recordPositionUpdate]
+    }, 8), // ~120 FPS for smoother updates
+    [currentUser, canvasId, recordPositionUpdate]
   );
 
   // Debounced final position update
   const debouncedFinalUpdate = useCallback(
     debounce(async (shapeId, x, y) => {
-      if (!currentUser) return;
+      if (!currentUser || !canvasId) return;
       
       try {
-        await updateShapePosition(shapeId, x, y, currentUser.uid);
+        await updateShapePosition(canvasId, shapeId, x, y, currentUser.uid);
       } catch (error) {
         console.error('Error updating final position:', error);
       }
-    }, 100),
-    [currentUser]
+    }, 50),
+    [currentUser, canvasId]
   );
 
   // Start drag operation
@@ -113,26 +113,21 @@ export const useOptimizedPositioning = () => {
   const endDrag = useCallback(async (shapeId) => {
     if (dragShapeId !== shapeId) return;
 
-    console.log(`🛑 endDrag called for shape ${shapeId}`);
     setIsDragging(false);
     setDragShapeId(null);
     
     // Clear real-time position from database
     try {
-      console.log(`🗑️ Clearing real-time position for shape ${shapeId}`);
-      await clearShapePosition(shapeId);
-      console.log(`✅ Real-time position cleared for shape ${shapeId}`);
+      await clearShapePosition(canvasId, shapeId);
     } catch (error) {
       console.error('Error clearing position:', error);
     }
 
     // Clear local caches
-    console.log(`🧹 Clearing local caches for shape ${shapeId}`);
     clearPositionCache(shapeId);
     delete lastPositionRef.current[shapeId];
     delete velocityRef.current[shapeId];
-    console.log(`✅ Local caches cleared for shape ${shapeId}`);
-  }, [dragShapeId]);
+  }, [dragShapeId, canvasId]);
 
   // Cleanup on unmount
   useEffect(() => {

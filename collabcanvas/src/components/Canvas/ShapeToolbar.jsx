@@ -1,12 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Square, Circle, Type, MousePointer, ALargeSmall, ChevronDown, StickyNote, CreditCard, List, SquareDashed } from 'lucide-react';
+import { Square, Circle, Type, MousePointer, ALargeSmall, ChevronDown, StickyNote, CreditCard, List, SquareDashed, AlignLeft } from 'lucide-react';
 import { useCanvas } from '../../contexts/CanvasContext';
 import ColorPicker from './ColorPicker';
 
 const ShapeToolbar = () => {
   const { addShape, stageRef, setCurrentTool, deselectAll, selectedId, shapes, updateShape, currentTool } = useCanvas();
   const [isFontSizeOpen, setIsFontSizeOpen] = useState(false);
+  const [isTextTypeOpen, setIsTextTypeOpen] = useState(false);
+  const [isFontFamilyOpen, setIsFontFamilyOpen] = useState(false);
   const fontSizeRef = useRef(null);
+  const textTypeRef = useRef(null);
+  const fontFamilyRef = useRef(null);
 
   const handleToolSwitch = async (tool) => {
     // Release any locks when switching tools
@@ -77,6 +81,45 @@ const ShapeToolbar = () => {
       console.log(`📝 Changing font size of shape ${selectedId} to ${fontSize}px`);
       await updateShape(selectedId, { fontSize: parseInt(fontSize) });
       setIsFontSizeOpen(false);
+      
+      // Trigger a re-render to recalculate text dimensions
+      setTimeout(() => {
+        if (stageRef.current) {
+          stageRef.current.batchDraw();
+        }
+      }, 100);
+    }
+  };
+
+  // Handle text type change for selected text shape
+  const handleTextTypeChange = async (textType) => {
+    if (selectedId) {
+      console.log(`📝 Changing text type of shape ${selectedId} to ${textType}`);
+      await updateShape(selectedId, { textType });
+      setIsTextTypeOpen(false);
+      
+      // Trigger a re-render to recalculate text dimensions
+      setTimeout(() => {
+        if (stageRef.current) {
+          stageRef.current.batchDraw();
+        }
+      }, 100);
+    }
+  };
+
+  // Handle font family change for selected text shape
+  const handleFontFamilyChange = async (fontFamily) => {
+    if (selectedId) {
+      console.log(`📝 Changing font family of shape ${selectedId} to ${fontFamily}`);
+      await updateShape(selectedId, { fontFamily });
+      setIsFontFamilyOpen(false);
+      
+      // Trigger a re-render to recalculate text dimensions
+      setTimeout(() => {
+        if (stageRef.current) {
+          stageRef.current.batchDraw();
+        }
+      }, 100);
     }
   };
 
@@ -84,14 +127,22 @@ const ShapeToolbar = () => {
   const selectedShape = selectedId ? shapes.find(shape => shape.id === selectedId) : null;
   const selectedColor = selectedShape?.fill || '#3b82f6';
   const selectedFontSize = selectedShape?.fontSize || 14;
+  const selectedTextType = selectedShape?.textType || 'normal';
+  const selectedFontFamily = selectedShape?.fontFamily || 'Inter';
   const isTextShape = selectedShape?.type === 'text';
 
 
-  // Close font size dropdown when clicking outside
+  // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (fontSizeRef.current && !fontSizeRef.current.contains(event.target)) {
         setIsFontSizeOpen(false);
+      }
+      if (textTypeRef.current && !textTypeRef.current.contains(event.target)) {
+        setIsTextTypeOpen(false);
+      }
+      if (fontFamilyRef.current && !fontFamilyRef.current.contains(event.target)) {
+        setIsFontFamilyOpen(false);
       }
     };
 
@@ -250,6 +301,111 @@ const ShapeToolbar = () => {
             
           </div>
           
+        )}
+      </div>
+
+      {/* Text Type Dropdown */}
+      <div className="relative" ref={textTypeRef}>
+        <button
+          onClick={() => {
+            if (isTextShape) {
+              setIsTextTypeOpen(!isTextTypeOpen);
+            }
+          }}
+          className={`flex items-center justify-center w-10 h-10 transition-colors duration-200 group ${
+            !isTextShape 
+              ? 'opacity-50 cursor-not-allowed' 
+              : 'hover:bg-gray-100'
+          }`}
+          title={!isTextShape ? "Select a text shape to change text type" : "Text Type"}
+        >
+          <AlignLeft className={`w-5 h-5 ${!isTextShape ? 'text-gray-400' : 'text-gray-700 group-hover:text-blue-600'}`} />
+        </button>
+          
+        {/* Text Type Dropdown Menu */}
+        {isTextTypeOpen && (
+          <div className="absolute bottom-12 left-0 z-50 bg-white rounded-lg shadow-lg border border-gray-200 p-2 min-w-[140px]">
+            <div className="space-y-1">
+              {[
+                { value: 'normal', label: 'Normal text', style: 'text-sm font-normal' },
+                { value: 'title', label: 'Title', style: 'text-2xl font-bold' },
+                { value: 'subtitle', label: 'Subtitle', style: 'text-lg font-medium text-gray-600' },
+                { value: 'heading1', label: 'Heading 1', style: 'text-xl font-bold' },
+                { value: 'heading2', label: 'Heading 2', style: 'text-lg font-bold' },
+                { value: 'heading3', label: 'Heading 3', style: 'text-base font-bold' }
+              ].map((textType) => (
+                <button
+                  key={textType.value}
+                  onClick={() => handleTextTypeChange(textType.value)}
+                  disabled={!isTextShape}
+                  className={`w-full text-left px-3 py-2 rounded transition-colors duration-200 ${
+                    !isTextShape 
+                      ? 'text-gray-400 cursor-not-allowed' 
+                      : selectedTextType === textType.value 
+                        ? 'bg-blue-50 text-blue-600 font-medium hover:bg-gray-100' 
+                        : 'text-gray-700 hover:bg-gray-100'
+                  }`}
+                >
+                  <span className={textType.style}>{textType.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Font Family Dropdown */}
+      <div className="relative" ref={fontFamilyRef}>
+        <button
+          onClick={() => {
+            if (isTextShape) {
+              setIsFontFamilyOpen(!isFontFamilyOpen);
+            }
+          }}
+          className={`flex items-center justify-center w-10 h-10 transition-colors duration-200 group ${
+            !isTextShape 
+              ? 'opacity-50 cursor-not-allowed' 
+              : 'hover:bg-gray-100'
+          }`}
+          title={!isTextShape ? "Select a text shape to change font family" : "Font Family"}
+        >
+          <Type className={`w-5 h-5 ${!isTextShape ? 'text-gray-400' : 'text-gray-700 group-hover:text-blue-600'}`} />
+        </button>
+          
+        {/* Font Family Dropdown Menu */}
+        {isFontFamilyOpen && (
+          <div className="absolute bottom-12 left-0 z-50 bg-white rounded-lg shadow-lg border border-gray-200 p-2 min-w-[160px]">
+            <div className="space-y-1">
+              {[
+                'Inter',
+                'Arial',
+                'Times New Roman',
+                'Helvetica',
+                'Georgia',
+                'Verdana',
+                'Courier New',
+                'Comic Sans MS',
+                'Trebuchet MS',
+                'Impact'
+              ].map((fontFamily) => (
+                <button
+                  key={fontFamily}
+                  onClick={() => handleFontFamilyChange(fontFamily)}
+                  disabled={!isTextShape}
+                  className={`w-full text-left px-3 py-2 text-sm rounded transition-colors duration-200 ${
+                    !isTextShape 
+                      ? 'text-gray-400 cursor-not-allowed' 
+                      : selectedFontFamily === fontFamily 
+                        ? 'bg-blue-50 text-blue-600 font-medium hover:bg-gray-100' 
+                        : 'text-gray-700 hover:bg-gray-100'
+                  }`}
+                  style={{ fontFamily }}
+                >
+                  {fontFamily}
+                </button>
+              ))}
+            </div>
+          </div>
         )}
       </div>
       

@@ -3,7 +3,12 @@ import {
   getDoc, 
   setDoc, 
   updateDoc, 
+  deleteDoc,
   onSnapshot,
+  collection,
+  query,
+  orderBy,
+  getDocs,
   arrayUnion,
   arrayRemove,
   serverTimestamp 
@@ -19,38 +24,96 @@ import {
 } from 'firebase/database';
 import { db, rtdb } from './firebase';
 
-const CANVAS_ID = 'global-canvas-v1';
+// Create a new canvas
+export const createCanvas = async (name, description, createdBy) => {
+  try {
+    const canvasId = `canvas_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const canvasRef = doc(db, 'canvases', canvasId);
+    
+    const canvasData = {
+      id: canvasId,
+      name,
+      description,
+      createdBy,
+      createdAt: serverTimestamp(),
+      isPublic: true,
+      shapes: []
+    };
+    
+    await setDoc(canvasRef, canvasData);
+    return canvasId;
+  } catch (error) {
+    console.error('Error creating canvas:', error);
+    throw new Error('Failed to create canvas. Please try again.');
+  }
+};
+
+// Get all canvases for dashboard
+export const getAllCanvases = async () => {
+  try {
+    const canvasesRef = collection(db, 'canvases');
+    const q = query(canvasesRef, orderBy('createdAt', 'desc'));
+    const querySnapshot = await getDocs(q);
+    
+    return querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+  } catch (error) {
+    console.error('Error getting canvases:', error);
+    throw new Error('Failed to load canvases. Please try again.');
+  }
+};
+
+// Get a specific canvas
+export const getCanvas = async (canvasId) => {
+  try {
+    const canvasRef = doc(db, 'canvases', canvasId);
+    const canvasDoc = await getDoc(canvasRef);
+    
+    if (canvasDoc.exists()) {
+      return { id: canvasDoc.id, ...canvasDoc.data() };
+    } else {
+      throw new Error('Canvas not found');
+    }
+  } catch (error) {
+    console.error('Error getting canvas:', error);
+    throw new Error('Failed to load canvas. Please try again.');
+  }
+};
+
+// Delete a canvas
+export const deleteCanvas = async (canvasId) => {
+  try {
+    const canvasRef = doc(db, 'canvases', canvasId);
+    await deleteDoc(canvasRef);
+    console.log('Canvas deleted successfully:', canvasId);
+    return true;
+  } catch (error) {
+    console.error('Error deleting canvas:', error);
+    throw new Error('Failed to delete canvas. Please try again.');
+  }
+};
 
 // Subscribe to canvas changes
-export const subscribeToShapes = (callback) => {
-  const canvasRef = doc(db, 'canvas', CANVAS_ID);
+export const subscribeToShapes = (canvasId, callback) => {
+  const canvasRef = doc(db, 'canvases', canvasId);
   
   return onSnapshot(canvasRef, (doc) => {
     if (doc.exists()) {
       const data = doc.data();
       callback(data.shapes || []);
     } else {
-      // Initialize canvas if it doesn't exist
-      initializeCanvas();
       callback([]);
     }
   });
 };
 
-// Initialize canvas document
-const initializeCanvas = async () => {
-  const canvasRef = doc(db, 'canvas', CANVAS_ID);
-  await setDoc(canvasRef, {
-    canvasId: CANVAS_ID,
-    shapes: [],
-    lastUpdated: serverTimestamp()
-  });
-};
 
 // Create a new shape
-export const createShape = async (shapeData) => {
+export const createShape = async (canvasId, shapeData) => {
   try {
-    const canvasRef = doc(db, 'canvas', CANVAS_ID);
+    const canvasRef = doc(db, 'canvases', canvasId);
     
     // First get current shapes
     const canvasDoc = await getDoc(canvasRef);
@@ -75,15 +138,50 @@ export const createShape = async (shapeData) => {
       selectedBy: shapeData.createdBy
     };
 
-    // Only add text field for text shapes and when text is defined
-    if (shapeData.type === 'text' && shapeData.text !== undefined) {
+    // Only add text fields for text shapes and when they are defined
+    if (shapeData.type === 'text') {
+      if (shapeData.text !== undefined) {
+        shape.text = shapeData.text;
+      }
+      if (shapeData.textType !== undefined) {
+        shape.textType = shapeData.textType;
+      }
+      if (shapeData.fontFamily !== undefined) {
+        shape.fontFamily = shapeData.fontFamily;
+      }
+    }
+
+    // Add card fields when they are defined
+    if (shapeData.type === 'card') {
+      if (shapeData.title !== undefined) {
+        shape.title = shapeData.title;
+      }
+      if (shapeData.content !== undefined) {
+        shape.content = shapeData.content;
+      }
+      if (shapeData.items !== undefined) {
+        shape.items = shapeData.items;
+      }
+    }
+
+    // Add list fields when they are defined
+    if (shapeData.type === 'list') {
+      if (shapeData.title !== undefined) {
+        shape.title = shapeData.title;
+      }
+      if (shapeData.items !== undefined) {
+        shape.items = shapeData.items;
+      }
+    }
+
+    // Add sticky note text when defined
+    if (shapeData.type === 'stickyNote' && shapeData.text !== undefined) {
       shape.text = shapeData.text;
     }
 
     const updatedShapes = [...currentShapes, shape];
     
     await setDoc(canvasRef, {
-      canvasId: CANVAS_ID,
       shapes: updatedShapes,
       lastUpdated: serverTimestamp()
     }, { merge: true });
@@ -94,9 +192,9 @@ export const createShape = async (shapeData) => {
 };
 
 // Create a new shape without auto-selecting (for bulk operations)
-export const createShapeWithoutSelection = async (shapeData) => {
+export const createShapeWithoutSelection = async (canvasId, shapeData) => {
   try {
-    const canvasRef = doc(db, 'canvas', CANVAS_ID);
+    const canvasRef = doc(db, 'canvases', canvasId);
     
     // First get current shapes
     const canvasDoc = await getDoc(canvasRef);
@@ -121,15 +219,50 @@ export const createShapeWithoutSelection = async (shapeData) => {
       selectedBy: null
     };
 
-    // Only add text field for text shapes and when text is defined
-    if (shapeData.type === 'text' && shapeData.text !== undefined) {
+    // Only add text fields for text shapes and when they are defined
+    if (shapeData.type === 'text') {
+      if (shapeData.text !== undefined) {
+        shape.text = shapeData.text;
+      }
+      if (shapeData.textType !== undefined) {
+        shape.textType = shapeData.textType;
+      }
+      if (shapeData.fontFamily !== undefined) {
+        shape.fontFamily = shapeData.fontFamily;
+      }
+    }
+
+    // Add card fields when they are defined
+    if (shapeData.type === 'card') {
+      if (shapeData.title !== undefined) {
+        shape.title = shapeData.title;
+      }
+      if (shapeData.content !== undefined) {
+        shape.content = shapeData.content;
+      }
+      if (shapeData.items !== undefined) {
+        shape.items = shapeData.items;
+      }
+    }
+
+    // Add list fields when they are defined
+    if (shapeData.type === 'list') {
+      if (shapeData.title !== undefined) {
+        shape.title = shapeData.title;
+      }
+      if (shapeData.items !== undefined) {
+        shape.items = shapeData.items;
+      }
+    }
+
+    // Add sticky note text when defined
+    if (shapeData.type === 'stickyNote' && shapeData.text !== undefined) {
       shape.text = shapeData.text;
     }
 
     const updatedShapes = [...currentShapes, shape];
     
     await setDoc(canvasRef, {
-      canvasId: CANVAS_ID,
       shapes: updatedShapes,
       lastUpdated: serverTimestamp()
     }, { merge: true });
@@ -140,9 +273,10 @@ export const createShapeWithoutSelection = async (shapeData) => {
 };
 
 // Update an existing shape
-export const updateShape = async (shapeId, updates) => {
+export const updateShape = async (canvasId, shapeId, updates) => {
+  console.log(`🔄 canvas.js: updateShape called for shape ${shapeId} with updates:`, updates);
   
-  const canvasRef = doc(db, 'canvas', CANVAS_ID);
+  const canvasRef = doc(db, 'canvases', canvasId);
   
   // First get current shapes
   const canvasDoc = await getDoc(canvasRef);
@@ -152,17 +286,32 @@ export const updateShape = async (shapeId, updates) => {
   }
   
   const currentShapes = canvasDoc.data().shapes || [];
+  const shapeToUpdate = currentShapes.find(shape => shape.id === shapeId);
+  
+  if (!shapeToUpdate) {
+    console.error(`❌ canvas.js: Shape ${shapeId} not found in current shapes`);
+    return;
+  }
+  
+  console.log(`📝 canvas.js: Current shape data:`, shapeToUpdate);
+  
+  // Filter out undefined values from updates to prevent Firebase errors
+  const filteredUpdates = Object.fromEntries(
+    Object.entries(updates).filter(([_, value]) => value !== undefined)
+  );
+
   const updatedShapes = currentShapes.map(shape => 
     shape.id === shapeId 
       ? { 
           ...shape, 
-          ...updates, 
+          ...filteredUpdates, 
           lastModifiedAt: new Date(),
           lastModifiedBy: updates.lastModifiedBy || shape.lastModifiedBy
         }
       : shape
   );
   
+  console.log(`📝 canvas.js: Updated shape data:`, updatedShapes.find(shape => shape.id === shapeId));
   
   try {
     await setDoc(canvasRef, {
@@ -170,15 +319,16 @@ export const updateShape = async (shapeId, updates) => {
       shapes: updatedShapes,
       lastUpdated: serverTimestamp()
     });
+    console.log(`✅ canvas.js: Successfully updated shape ${shapeId} in Firebase`);
   } catch (error) {
-    console.error('Firebase update failed:', error);
+    console.error('❌ canvas.js: Firebase update failed:', error);
     throw error;
   }
 };
 
 // Update shape selection state
-export const updateShapeSelection = async (shapeId, userId, isSelected) => {
-  const canvasRef = doc(db, 'canvas', CANVAS_ID);
+export const updateShapeSelection = async (canvasId, shapeId, userId, isSelected) => {
+  const canvasRef = doc(db, 'canvases', canvasId);
   
   // First get current shapes
   const canvasDoc = await getDoc(canvasRef);
@@ -203,8 +353,8 @@ export const updateShapeSelection = async (shapeId, userId, isSelected) => {
 };
 
 // Clear all selections for a specific user
-export const clearUserSelections = async (userId) => {
-  const canvasRef = doc(db, 'canvas', CANVAS_ID);
+export const clearUserSelections = async (canvasId, userId) => {
+  const canvasRef = doc(db, 'canvases', canvasId);
   
   // First get current shapes
   const canvasDoc = await getDoc(canvasRef);
@@ -237,8 +387,8 @@ export const clearUserSelections = async (userId) => {
 };
 
 // Clear all locks for a specific user
-export const clearUserLocks = async (userId) => {
-  const canvasRef = doc(db, 'canvas', CANVAS_ID);
+export const clearUserLocks = async (canvasId, userId) => {
+  const canvasRef = doc(db, 'canvases', canvasId);
   
   // First get current shapes
   const canvasDoc = await getDoc(canvasRef);
@@ -271,8 +421,8 @@ export const clearUserLocks = async (userId) => {
 };
 
 // Delete a shape
-export const deleteShape = async (shapeId) => {
-  const canvasRef = doc(db, 'canvas', CANVAS_ID);
+export const deleteShape = async (canvasId, shapeId) => {
+  const canvasRef = doc(db, 'canvases', canvasId);
   
   // First get current shapes
   const canvasDoc = await getDoc(canvasRef);
@@ -289,16 +439,16 @@ export const deleteShape = async (shapeId) => {
 };
 
 // Lock a shape
-export const lockShape = async (shapeId, userId) => {
-  await updateShape(shapeId, {
+export const lockShape = async (canvasId, shapeId, userId) => {
+  await updateShape(canvasId, shapeId, {
     isLocked: true,
     lockedBy: userId
   });
 };
 
 // Unlock a shape
-export const unlockShape = async (shapeId) => {
-  await updateShape(shapeId, {
+export const unlockShape = async (canvasId, shapeId) => {
+  await updateShape(canvasId, shapeId, {
     isLocked: false,
     lockedBy: null
   });
@@ -307,8 +457,8 @@ export const unlockShape = async (shapeId) => {
 // ─────────────── Real-time Position Updates ───────────────
 
 // Subscribe to real-time position updates for a specific shape
-export const subscribeToShapePosition = (shapeId, callback) => {
-  const positionRef = ref(rtdb, `positions/${shapeId}`);
+export const subscribeToShapePosition = (canvasId, shapeId, callback) => {
+  const positionRef = ref(rtdb, `positions/${canvasId}/${shapeId}`);
   
   const unsubscribe = onValue(positionRef, (snapshot) => {
     if (snapshot.exists()) {
@@ -326,8 +476,8 @@ export const subscribeToShapePosition = (shapeId, callback) => {
 };
 
 // Update shape position in real-time (for live dragging) with optimized throttling
-export const updateShapePosition = async (shapeId, x, y, userId) => {
-  const positionRef = ref(rtdb, `positions/${shapeId}`);
+export const updateShapePosition = async (canvasId, shapeId, x, y, userId) => {
+  const positionRef = ref(rtdb, `positions/${canvasId}/${shapeId}`);
   
   try {
     await set(positionRef, {
@@ -342,8 +492,8 @@ export const updateShapePosition = async (shapeId, x, y, userId) => {
 };
 
 // Clear real-time position when drag ends
-export const clearShapePosition = async (shapeId) => {
-  const positionRef = ref(rtdb, `positions/${shapeId}`);
+export const clearShapePosition = async (canvasId, shapeId) => {
+  const positionRef = ref(rtdb, `positions/${canvasId}/${shapeId}`);
   
   console.log(`🗑️ clearShapePosition called for shape ${shapeId}`);
   try {
@@ -355,8 +505,8 @@ export const clearShapePosition = async (shapeId) => {
 };
 
 // Subscribe to all real-time position updates with optimized handling
-export const subscribeToAllPositions = (callback) => {
-  const positionsRef = ref(rtdb, 'positions');
+export const subscribeToAllPositions = (canvasId, callback) => {
+  const positionsRef = ref(rtdb, `positions/${canvasId}`);
   let lastUpdateTime = 0;
   const updateThrottle = 16; // ~60 FPS
   
