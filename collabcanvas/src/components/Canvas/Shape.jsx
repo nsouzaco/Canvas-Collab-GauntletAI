@@ -295,7 +295,6 @@ const Shape = ({
     }
     // Don't allow dragging if being moved by another user
     if (isBeingMovedByOther) {
-      console.log(`🚫 Shape ${shape.id} is being moved by another user, preventing drag`);
       return;
     }
     
@@ -360,7 +359,6 @@ const Shape = ({
 
     // Don't send updates to Firebase during transformation - only update on transform end
     // This prevents race conditions and excessive Firebase calls
-    console.log(`🔄 Shape ${shape.id} transforming: ${newWidth}x${newHeight}, rotation: ${rotation}`);
   };
 
   const handleTransformEnd = (e) => {
@@ -386,7 +384,6 @@ const Shape = ({
     
     // Save shape updates to Firebase - ensure this is called
     if (onResize) {
-      console.log(`🔄 Saving resize for shape ${shape.id}:`, newAttrs);
       onResize(shape.id, newAttrs);
     } else {
       console.error(`❌ onResize not available for shape ${shape.id}`);

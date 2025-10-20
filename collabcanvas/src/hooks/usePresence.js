@@ -73,7 +73,6 @@ export const usePresence = () => {
   // Handle online/offline status and presence refresh
   useEffect(() => {
     const handleOnline = () => {
-      console.log('🌐 Presence connection restored');
       setIsOffline(false);
       // Refresh presence when connection is restored
       if (currentUser && canvasId) {
@@ -84,14 +83,12 @@ export const usePresence = () => {
     };
 
     const handleOffline = () => {
-      console.log('📴 Presence connection lost');
       setIsOffline(true);
     };
 
     // Handle visibility change (when user returns to tab)
     const handleVisibilityChange = () => {
       if (!document.hidden && currentUser && canvasId) {
-        console.log('👁️ User became active, refreshing presence');
         const displayName = getDisplayName(currentUser);
         const cursorColor = generateUserColor(currentUser.uid);
         refreshUserPresence(canvasId, currentUser.uid, displayName, cursorColor);
@@ -102,7 +99,6 @@ export const usePresence = () => {
     // Heartbeat system - refresh presence every 30 seconds
     const heartbeatInterval = setInterval(() => {
       if (currentUser && canvasId && !document.hidden) {
-        console.log('💓 Heartbeat: refreshing presence');
         const displayName = getDisplayName(currentUser);
         const cursorColor = generateUserColor(currentUser.uid);
         refreshUserPresence(canvasId, currentUser.uid, displayName, cursorColor);
@@ -112,10 +108,8 @@ export const usePresence = () => {
     // Handle page refresh/unload - set user offline
     const handleBeforeUnload = async () => {
       if (currentUser && canvasId) {
-        console.log(`🧹 Page refresh detected - setting user ${currentUser.uid} offline`);
         try {
           await setUserOffline(canvasId, currentUser.uid);
-          console.log(`✅ User ${currentUser.uid} marked as offline`);
         } catch (error) {
           console.error('Error setting user offline on page refresh:', error);
         }

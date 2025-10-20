@@ -131,8 +131,6 @@ const createShapeObject = (type, index, canvasWidth, canvasHeight) => {
  * Create multiple shapes for performance testing
  */
 export const createBulkObjects = async (count = 500, addShapeFunction) => {
-  console.log(`🚀 Creating ${count} objects for performance testing...`);
-  
   const canvasWidth = Math.min(1200, window.innerWidth - 300);
   const canvasHeight = 1000;
   
@@ -152,8 +150,6 @@ export const createBulkObjects = async (count = 500, addShapeFunction) => {
       const batchEnd = Math.min(batchStart + batchSize, count);
       const batchCount = batchEnd - batchStart;
       
-      console.log(`📦 Creating batch ${batch + 1}/${batches} (${batchCount} objects)...`);
-      
       // Create shapes for this batch
       const batchPromises = [];
       for (let i = batchStart; i < batchEnd; i++) {
@@ -165,7 +161,6 @@ export const createBulkObjects = async (count = 500, addShapeFunction) => {
           if (shapeId) {
             createdCount++;
             lastShapeId = shapeId; // Track the last created shape
-            console.log(`✅ Created shape ${createdCount}/${count}: ${shapeType} (${shapeId})`);
           }
           return shapeId;
         }).catch(error => {
@@ -187,9 +182,6 @@ export const createBulkObjects = async (count = 500, addShapeFunction) => {
     
     const endTime = performance.now();
     const duration = endTime - startTime;
-    
-    console.log(`✅ Created ${createdCount} objects in ${duration.toFixed(2)}ms`);
-    console.log(`📊 Average creation time: ${(duration / createdCount).toFixed(2)}ms per object`);
     
     return {
       success: true,
@@ -214,8 +206,6 @@ export const createBulkObjects = async (count = 500, addShapeFunction) => {
  * Create objects with specific patterns for testing
  */
 export const createPatternObjects = async (pattern, addShapeFunction) => {
-  console.log(`🎨 Creating objects with pattern: ${pattern}`);
-  
   const canvasWidth = Math.min(1200, window.innerWidth - 300);
   const canvasHeight = 1000;
   
@@ -279,7 +269,6 @@ const createGridPattern = async (canvasWidth, canvasHeight, addShapeFunction) =>
     const endTime = performance.now();
     const duration = endTime - startTime;
     
-    console.log(`✅ Created ${createdCount} objects in grid pattern in ${duration.toFixed(2)}ms`);
     return { 
       success: true, 
       count: createdCount, 
@@ -340,7 +329,6 @@ const createSpiralPattern = async (canvasWidth, canvasHeight, addShapeFunction) 
     const endTime = performance.now();
     const duration = endTime - startTime;
     
-    console.log(`✅ Created ${createdCount} objects in spiral pattern in ${duration.toFixed(2)}ms`);
     return { 
       success: true, 
       count: createdCount, 
@@ -371,7 +359,7 @@ export const performanceTestUtils = {
       
       if (currentTime - lastTime >= 1000) {
         const fps = frameCount;
-        console.log(`📊 Current FPS: ${fps}`);
+        // FPS logging removed for cleaner console
         frameCount = 0;
         lastTime = currentTime;
       }
@@ -388,12 +376,13 @@ export const performanceTestUtils = {
   monitorMemory: () => {
     if (performance.memory) {
       const memory = performance.memory;
-      console.log(`🧠 Memory Usage:`, {
+      return {
         used: `${(memory.usedJSHeapSize / 1024 / 1024).toFixed(2)} MB`,
         total: `${(memory.totalJSHeapSize / 1024 / 1024).toFixed(2)} MB`,
         limit: `${(memory.jsHeapSizeLimit / 1024 / 1024).toFixed(2)} MB`
-      });
+      };
     }
+    return null;
   }
 };
 

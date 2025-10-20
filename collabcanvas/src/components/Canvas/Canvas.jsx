@@ -13,7 +13,6 @@ import Shape from './Shape';
 import InlineTextEditor from './InlineTextEditor';
 import Cursor from '../Collaboration/Cursor';
 import PerformanceDashboard from '../Debug/PerformanceDashboard';
-import PerformanceTester from '../Performance/PerformanceTester';
 import Toast from './Toast';
 import PropertiesPanel from './PropertiesPanel';
 
@@ -96,6 +95,7 @@ const Canvas = ({ snapToGridEnabled: propSnapToGridEnabled }) => {
   const [editingTextId, setEditingTextId] = useState(null);
   const [editingText, setEditingText] = useState('');
   const [snapToGridEnabled, setSnapToGridEnabled] = useState(propSnapToGridEnabled ?? true);
+  const [showPerformanceDashboard, setShowPerformanceDashboard] = useState(false);
   
 
   const { handleMouseMove } = useCursors(stagePos, scale);
@@ -148,7 +148,6 @@ const Canvas = ({ snapToGridEnabled: propSnapToGridEnabled }) => {
       if (position.updatedBy !== currentUser?.uid) {
         // Check if this position is stale (no updates for 1 second)
         if (currentTime - position.timestamp > timeout) {
-          console.log(`🧹 Cleaning up stale position for shape ${shapeId} from user ${position.updatedBy}`);
           clearRemotePositionCache(shapeId, position.updatedBy);
           // Also clear the real-time position from the state
           clearRealTimePosition(shapeId);
@@ -386,10 +385,8 @@ const Canvas = ({ snapToGridEnabled: propSnapToGridEnabled }) => {
 
   // Handle shape resize
   const handleShapeResize = async (shapeId, updates) => {
-    console.log(`🔄 Canvas: handleShapeResize called for shape ${shapeId} with updates:`, updates);
     try {
       await updateShape(shapeId, updates);
-      console.log(`✅ Canvas: Successfully updated shape ${shapeId}`);
     } catch (error) {
       console.error(`❌ Canvas: Error updating shape ${shapeId}:`, error);
     }
@@ -615,9 +612,6 @@ const Canvas = ({ snapToGridEnabled: propSnapToGridEnabled }) => {
       
       {/* Performance Dashboard */}
       <PerformanceDashboard isVisible={showPerformanceDashboard} />
-      
-      {/* Performance Tester */}
-      <PerformanceTester />
       
       {/* Toast Notifications */}
       <Toast toast={toast} />

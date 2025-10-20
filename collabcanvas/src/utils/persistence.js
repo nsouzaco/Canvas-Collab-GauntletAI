@@ -127,7 +127,6 @@ export const UserPreferencesPersistence = {
   loadPreferences() {
     const prefs = PersistentStorage.getItem(STORAGE_KEYS.USER_PREFERENCES);
     if (prefs) {
-      console.log('👤 Loaded user preferences:', prefs);
       return prefs;
     }
     return {
@@ -160,7 +159,6 @@ export const AIAssistantPersistence = {
   loadAIState() {
     const state = PersistentStorage.getItem(STORAGE_KEYS.AI_ASSISTANT_STATE);
     if (state) {
-      console.log('🤖 Loaded AI assistant state:', state);
       return state;
     }
     return {
@@ -198,7 +196,6 @@ export const PresencePersistence = {
   loadPresenceCache() {
     const cache = PersistentStorage.getItem(STORAGE_KEYS.PRESENCE_CACHE);
     if (cache && cache.users) {
-      console.log('👥 Loaded presence cache:', cache.users.length, 'users');
       return cache.users;
     }
     return [];
@@ -224,7 +221,6 @@ export const ConnectionPersistence = {
   loadConnectionState() {
     const state = PersistentStorage.getItem(STORAGE_KEYS.CONNECTION_STATE);
     if (state) {
-      console.log('🔌 Loaded connection state:', state);
       return state;
     }
     return {
@@ -262,7 +258,6 @@ export class OfflineQueue {
         timestamp: Date.now()
       });
       localStorage.setItem(this.QUEUE_KEY, JSON.stringify(queue));
-      console.log('📝 Added action to offline queue:', action.type);
       return true;
     } catch (error) {
       console.warn('Failed to add action to offline queue:', error);
@@ -284,7 +279,6 @@ export class OfflineQueue {
     const queue = this.getQueue();
     if (queue.length === 0) return [];
 
-    console.log(`🔄 Processing ${queue.length} offline actions`);
     const results = [];
     
     queue.forEach(async (action) => {
@@ -305,7 +299,6 @@ export class OfflineQueue {
   static clearQueue() {
     try {
       localStorage.removeItem(this.QUEUE_KEY);
-      console.log('🧹 Cleared offline queue');
       return true;
     } catch (error) {
       console.warn('Failed to clear offline queue:', error);
@@ -319,8 +312,6 @@ export class OfflineQueue {
  */
 export class ReconnectionHandler {
   static async handleReconnection() {
-    console.log('🔄 Handling reconnection...');
-    
     // Load cached state
     const canvasState = CanvasPersistence.loadCanvasState();
     const userPrefs = UserPreferencesPersistence.loadPreferences();
@@ -331,7 +322,6 @@ export class ReconnectionHandler {
     // Process offline queue
     const queueResults = await OfflineQueue.processQueue(async (action) => {
       // This would be implemented based on the specific action type
-      console.log('Processing offline action:', action);
       return { success: true };
     });
 
@@ -346,8 +336,6 @@ export class ReconnectionHandler {
   }
 
   static async saveStateBeforeDisconnect() {
-    console.log('💾 Saving state before disconnect...');
-    
     // This would be called when the user is about to disconnect
     // to ensure we have the latest state cached
     return {

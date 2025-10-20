@@ -81,12 +81,9 @@ export const useCanvas = (canvasId) => {
     const handleBeforeUnload = async () => {
       if (!currentUser || !canvasId) return;
       
-      console.log(`🧹 Page refresh detected - clearing real-time positions for user ${currentUser.uid}`);
-      
       try {
         // Clear all real-time positions for the current user
         // This is handled by the presence system, but we can add additional cleanup here if needed
-        console.log(`✅ Real-time position cleanup completed for user ${currentUser.uid}`);
       } catch (error) {
         console.error('Error during real-time position cleanup:', error);
       }
@@ -395,14 +392,11 @@ export const useCanvas = (canvasId) => {
   const updateShapeData = useCallback(async (id, updates) => {
     if (!currentUser || !canvasId) return;
 
-    console.log(`🔄 useCanvas: updateShapeData called for shape ${id} with updates:`, updates);
-
     try {
       await updateShape(canvasId, id, {
         ...updates,
         lastModifiedBy: currentUser.uid
       });
-      console.log(`✅ useCanvas: Successfully updated shape ${id} in Firebase`);
     } catch (error) {
       console.error(`❌ useCanvas: Error updating shape ${id}:`, error);
     }

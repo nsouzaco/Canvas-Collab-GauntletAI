@@ -57,20 +57,12 @@ const ShapeToolbar = () => {
       TARGET_CENTER_Y + randomOffsetY + extraRandomY
     ));
     
-    console.log('🎨 Manual shape creation - truly random position:', {
-      position: { x: finalX, y: finalY },
-      angle: SPREAD_ANGLE,
-      distance: SPREAD_DISTANCE,
-      extraRandom: { x: extraRandomX, y: extraRandomY }
-    });
-    
     await addShape(shapeType, { x: finalX, y: finalY });
   };
 
   // Handle color change for selected shape
   const handleColorChange = async (color) => {
     if (selectedId) {
-      console.log(`🎨 Changing color of shape ${selectedId} to ${color}`);
       await updateShape(selectedId, { fill: color });
     }
   };
@@ -78,7 +70,6 @@ const ShapeToolbar = () => {
   // Handle font size change for selected text shape
   const handleFontSizeChange = async (fontSize) => {
     if (selectedId) {
-      console.log(`📝 Changing font size of shape ${selectedId} to ${fontSize}px`);
       await updateShape(selectedId, { fontSize: parseInt(fontSize) });
       setIsFontSizeOpen(false);
       
@@ -94,7 +85,6 @@ const ShapeToolbar = () => {
   // Handle text type change for selected text shape
   const handleTextTypeChange = async (textType) => {
     if (selectedId) {
-      console.log(`📝 Changing text type of shape ${selectedId} to ${textType}`);
       await updateShape(selectedId, { textType });
       setIsTextTypeOpen(false);
       
@@ -110,7 +100,6 @@ const ShapeToolbar = () => {
   // Handle font family change for selected text shape
   const handleFontFamilyChange = async (fontFamily) => {
     if (selectedId) {
-      console.log(`📝 Changing font family of shape ${selectedId} to ${fontFamily}`);
       await updateShape(selectedId, { fontFamily });
       setIsFontFamilyOpen(false);
       

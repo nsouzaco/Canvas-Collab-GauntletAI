@@ -138,11 +138,9 @@ export const testCommands = [
 // Mock OpenAI response for testing
 export const mockOpenAIResponse = (command) => {
   const lowerCommand = command.toLowerCase();
-  console.log('🔍 Mock response checking command:', command, 'lowercase:', lowerCommand);
   
   // Check for note/sticky note commands
   if (lowerCommand.includes('note') || lowerCommand.includes('sticky') || lowerCommand.includes('post-it')) {
-    console.log('🔍 Matched note command, returning stickyNote');
     return {
       operation: "create",
       type: "stickyNote",

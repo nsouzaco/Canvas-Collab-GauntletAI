@@ -22,12 +22,4 @@ export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const rtdb = getDatabase(app);
 
-// Debug Firebase connection
-console.log('Firebase initialized:', {
-  auth: !!auth,
-  db: !!db,
-  rtdb: !!rtdb,
-  databaseURL: firebaseConfig.databaseURL
-});
-
 export default app;

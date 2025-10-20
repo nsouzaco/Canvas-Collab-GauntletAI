@@ -75,8 +75,6 @@ const CanvasDashboard = () => {
       
       // Close the confirmation dialog
       setDeleteConfirm({ show: false, canvas: null });
-      
-      console.log('Canvas deleted successfully');
     } catch (error) {
       console.error('Error deleting canvas:', error);
       setError('Failed to delete canvas. Please try again.');

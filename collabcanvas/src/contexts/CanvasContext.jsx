@@ -200,8 +200,6 @@ export const CanvasProvider = ({ children, canvasId }) => {
   };
 
   const updateShape = async (id, updates) => {
-    console.log(`🔄 CanvasContext: updateShape called for shape ${id} with updates:`, updates);
-    
     // Find the shape to get its current state
     const currentShape = shapes.find(s => s.id === id);
     if (!currentShape) {
@@ -226,7 +224,6 @@ export const CanvasProvider = ({ children, canvasId }) => {
     
     try {
       await updateShapeInFirebase(id, updates);
-      console.log(`✅ CanvasContext: Successfully updated shape ${id} in Firebase`);
     } catch (error) {
       console.error(`❌ CanvasContext: Error updating shape ${id} in Firebase:`, error);
       throw error;
@@ -440,11 +437,8 @@ export const CanvasProvider = ({ children, canvasId }) => {
   const undo = async () => {
     // Only allow undo when a shape is selected
     if (!selectedId) {
-      console.log('No shape selected, undo disabled');
       return;
     }
-    
-    console.log('Undo triggered for shape:', selectedId, 'canUndo:', canUndo);
     
     if (!canUndo) return;
     
@@ -453,20 +447,12 @@ export const CanvasProvider = ({ children, canvasId }) => {
       op.userId === currentUser?.uid && op.shapeId === selectedId
     );
     
-    console.log('All operations in history:', historyManager.current.history);
-    console.log('User operations for selected shape:', userOperations);
-    console.log('Current user:', currentUser?.uid);
-    console.log('Selected shape:', selectedId);
-    
     if (userOperations.length === 0) {
-      console.log('No undoable operations for selected shape');
       return;
     }
     
     const operation = userOperations[userOperations.length - 1];
     if (!operation) return;
-    
-    console.log('Undoing operation for shape', selectedId, ':', operation);
     
     try {
       switch (operation.type) {
@@ -482,7 +468,6 @@ export const CanvasProvider = ({ children, canvasId }) => {
           
         case 'update':
           // Undo update: restore previous state
-          console.log('Undoing update for shape', operation.shapeId, 'Previous state:', operation.previousState);
           await updateShapeInFirebase(operation.shapeId, operation.previousState);
           break;
           
@@ -512,7 +497,6 @@ export const CanvasProvider = ({ children, canvasId }) => {
     // For redo, we need to look at the redo stack (operations that were undone)
     // This is more complex in a user-scoped system, so for now we'll disable redo
     // and focus on making undo work properly
-    console.log('Redo is not yet implemented for user-scoped operations');
     return;
   };
 
@@ -856,13 +840,10 @@ export const CanvasProvider = ({ children, canvasId }) => {
     const handleBeforeUnload = async () => {
       if (!currentUser || !canvasId) return;
       
-      console.log(`🧹 Page refresh detected - cleaning up locks and selections for user ${currentUser.uid}`);
-      
       try {
         // Clear all locks and selections for the current user
         await clearAllLocksInFirebase();
         await clearAllSelectionsInFirebase();
-        console.log(`✅ Cleanup completed for user ${currentUser.uid}`);
       } catch (error) {
         console.error('Error during page refresh cleanup:', error);
         // Continue with page unload even if cleanup fails
@@ -885,8 +866,6 @@ export const CanvasProvider = ({ children, canvasId }) => {
   useEffect(() => {
     return () => {
       if (currentUser && canvasId) {
-        console.log(`🧹 Component unmounting - cleaning up locks and selections for user ${currentUser.uid}`);
-        
         // Use synchronous cleanup for component unmount
         // Note: We can't use async/await in cleanup functions
         clearAllLocksInFirebase().catch(error => {

@@ -17,31 +17,21 @@ const Navbar = ({ onBackToDashboard, onDeleteCanvas = null, canvasName }) => {
     canvasId = canvasContext?.canvasId;
   } catch (error) {
     // CanvasContext not available (e.g., in dashboard view)
-    console.log('CanvasContext not available, skipping canvas-specific cleanup');
   }
 
   const handleSignOut = async () => {
     if (!currentUser) return;
     
     const userId = currentUser.uid;
-    console.log(`🚪 User ${userId} signing out - cleaning up locks and selections`);
     
     try {
       // Clear all user's locks and selections before signing out (only if canvasId is available)
       if (canvasId) {
-        console.log(`🧹 Clearing locks for user ${userId} in canvas ${canvasId}`);
         await clearUserLocks(canvasId, userId);
-        
-        console.log(`🧹 Clearing selections for user ${userId} in canvas ${canvasId}`);
         await clearUserSelections(canvasId, userId);
-        
-        console.log(`👋 Setting user ${userId} as offline in canvas ${canvasId}`);
         await setUserOffline(canvasId, userId);
-      } else {
-        console.log('No canvasId available, skipping canvas-specific cleanup');
       }
       
-      console.log(`✅ Cleanup completed for user ${userId}`);
     } catch (error) {
       console.error('Error during sign out cleanup:', error);
       // Continue with sign out even if cleanup fails

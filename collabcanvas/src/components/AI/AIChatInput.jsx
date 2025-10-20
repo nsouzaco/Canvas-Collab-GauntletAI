@@ -87,7 +87,6 @@ const AIChatInput = ({ onShapeCreate, isVisible, onToggle, canvasMetadata = { na
       if (result && result.message) {
         const aiMessage = { role: 'assistant', content: result.message };
         setConversationHistory(prev => [...prev.slice(-9), aiMessage]); // Keep last 10 messages
-        console.log('✅ AI operation result:', result.message);
       }
       
       // Save the successful command and result

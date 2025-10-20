@@ -26,9 +26,7 @@ export const parseShapeCommand = async (command, conversationHistory = [], canva
   try {
     // If no API key is provided, use mock responses for development
     if (!openai) {
-      console.log('🤖 Using mock AI response for development');
       const mockResponse = mockOpenAIResponse(command);
-      console.log('🤖 Mock response:', mockResponse);
       return {
         ...mockResponse,
         confidence: 0.8
@@ -225,11 +223,9 @@ export const parseShapeCommand = async (command, conversationHistory = [], canva
     });
 
     const content = response.choices[0].message.content;
-    console.log('🤖 Raw OpenAI response:', content);
     
     try {
       const parsed = JSON.parse(content);
-      console.log('🤖 Parsed OpenAI response:', parsed);
       return parsed;
     } catch (parseError) {
       console.error('Failed to parse OpenAI response:', parseError);
@@ -240,7 +236,6 @@ export const parseShapeCommand = async (command, conversationHistory = [], canva
       if (jsonMatch) {
         try {
           const extractedJson = JSON.parse(jsonMatch[0]);
-          console.log('🤖 Extracted JSON from response:', extractedJson);
           return extractedJson;
         } catch (extractError) {
           console.error('Failed to parse extracted JSON:', extractError);
@@ -248,9 +243,7 @@ export const parseShapeCommand = async (command, conversationHistory = [], canva
       }
       
       // Fallback to mock response for common commands
-      console.log('🤖 Falling back to mock response for command:', command);
       const mockResponse = mockOpenAIResponse(command);
-      console.log('🤖 Mock response:', mockResponse);
       return mockResponse;
     }
   } catch (error) {
@@ -271,7 +264,6 @@ export const generateStartupDetails = async (idea) => {
   try {
     // If no API key is provided, use mock responses for development
     if (!openai) {
-      console.log('🤖 Using mock AI response for startup generation');
       const mockName = `Startup${Math.floor(Math.random() * 1000)}`;
       const mockDescription = `An innovative solution for ${idea.toLowerCase()}. We're building the future of this space with cutting-edge technology and user-centric design.`;
       return {
@@ -315,7 +307,6 @@ export const generateStartupDetails = async (idea) => {
     
     try {
       const parsed = JSON.parse(content);
-      console.log('🤖 OpenAI startup generation response:', parsed);
       return parsed;
     } catch (parseError) {
       console.error('Failed to parse OpenAI startup response:', parseError);
@@ -347,7 +338,6 @@ export const generatePersonaCard = async (canvasMetadata) => {
     const persona = templates[Math.floor(Math.random() * templates.length)];
     
     if (!openai) {
-      console.log('🤖 Using mock persona generation');
       const items = persona.items.slice(0, 3);
       while (items.length < 3) {
         items.push(`Persona detail ${items.length + 1} for ${canvasMetadata.name}`);
@@ -443,7 +433,6 @@ export const generateFeatureCard = async (canvasMetadata) => {
     const templates = getFeatureTemplates(domain, canvasMetadata.name);
     
     if (!openai) {
-      console.log('🤖 Using mock feature generation');
       return {
         title: `${canvasMetadata.name} Features`,
         content: `Key features for this ${domain} application:`,
@@ -507,7 +496,6 @@ export const generateUserStoryCard = async (canvasMetadata) => {
     const templates = getUserStoryTemplates(domain, canvasMetadata.name);
     
     if (!openai) {
-      console.log('🤖 Using mock user story generation');
       return {
         title: `User Stories for ${canvasMetadata.name}`,
         content: `As a user of ${canvasMetadata.name}, I want to:`,
@@ -571,7 +559,6 @@ export const generatePainPointsCard = async (canvasMetadata) => {
     const templates = getPainPointTemplates(domain, canvasMetadata.name);
     
     if (!openai) {
-      console.log('🤖 Using mock pain points generation');
       return {
         title: `User Pain Points for ${canvasMetadata.name}`,
         content: `Common challenges users face in the ${domain} space:`,
@@ -635,7 +622,6 @@ export const generateCompetitiveAnalysisCard = async (canvasMetadata) => {
     const templates = getCompetitiveAnalysisTemplates(domain, canvasMetadata.name);
     
     if (!openai) {
-      console.log('🤖 Using mock competitive analysis generation');
       return {
         title: `Competitive Analysis for ${canvasMetadata.name}`,
         content: `Key competitors in the ${domain} space:`,

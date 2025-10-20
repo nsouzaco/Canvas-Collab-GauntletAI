@@ -87,7 +87,6 @@ export const deleteCanvas = async (canvasId) => {
   try {
     const canvasRef = doc(db, 'canvases', canvasId);
     await deleteDoc(canvasRef);
-    console.log('Canvas deleted successfully:', canvasId);
     return true;
   } catch (error) {
     console.error('Error deleting canvas:', error);
@@ -114,10 +113,6 @@ export const subscribeToShapes = (canvasId, callback) => {
 export const createShape = async (canvasId, shapeData) => {
   try {
     const canvasRef = doc(db, 'canvases', canvasId);
-    
-    // First get current shapes
-    const canvasDoc = await getDoc(canvasRef);
-    const currentShapes = canvasDoc.exists() ? canvasDoc.data().shapes || [] : [];
     
     const now = new Date();
     const shape = {
@@ -179,12 +174,11 @@ export const createShape = async (canvasId, shapeData) => {
       shape.text = shapeData.text;
     }
 
-    const updatedShapes = [...currentShapes, shape];
-    
-    await setDoc(canvasRef, {
-      shapes: updatedShapes,
+    // Use arrayUnion to atomically add the shape - prevents race conditions
+    await updateDoc(canvasRef, {
+      shapes: arrayUnion(shape),
       lastUpdated: serverTimestamp()
-    }, { merge: true });
+    });
   } catch (error) {
     console.error('Error creating shape:', error);
     throw new Error('Failed to create shape. Please try again.');
@@ -195,10 +189,6 @@ export const createShape = async (canvasId, shapeData) => {
 export const createShapeWithoutSelection = async (canvasId, shapeData) => {
   try {
     const canvasRef = doc(db, 'canvases', canvasId);
-    
-    // First get current shapes
-    const canvasDoc = await getDoc(canvasRef);
-    const currentShapes = canvasDoc.exists() ? canvasDoc.data().shapes || [] : [];
     
     const now = new Date();
     const shape = {
@@ -260,12 +250,11 @@ export const createShapeWithoutSelection = async (canvasId, shapeData) => {
       shape.text = shapeData.text;
     }
 
-    const updatedShapes = [...currentShapes, shape];
-    
-    await setDoc(canvasRef, {
-      shapes: updatedShapes,
+    // Use arrayUnion to atomically add the shape - prevents race conditions
+    await updateDoc(canvasRef, {
+      shapes: arrayUnion(shape),
       lastUpdated: serverTimestamp()
-    }, { merge: true });
+    });
   } catch (error) {
     console.error('Error creating shape:', error);
     throw new Error('Failed to create shape. Please try again.');
@@ -274,8 +263,6 @@ export const createShapeWithoutSelection = async (canvasId, shapeData) => {
 
 // Update an existing shape
 export const updateShape = async (canvasId, shapeId, updates) => {
-  console.log(`🔄 canvas.js: updateShape called for shape ${shapeId} with updates:`, updates);
-  
   const canvasRef = doc(db, 'canvases', canvasId);
   
   // First get current shapes
@@ -293,8 +280,6 @@ export const updateShape = async (canvasId, shapeId, updates) => {
     return;
   }
   
-  console.log(`📝 canvas.js: Current shape data:`, shapeToUpdate);
-  
   // Filter out undefined values from updates to prevent Firebase errors
   const filteredUpdates = Object.fromEntries(
     Object.entries(updates).filter(([_, value]) => value !== undefined)
@@ -311,15 +296,12 @@ export const updateShape = async (canvasId, shapeId, updates) => {
       : shape
   );
   
-  console.log(`📝 canvas.js: Updated shape data:`, updatedShapes.find(shape => shape.id === shapeId));
-  
   try {
     await setDoc(canvasRef, {
       ...canvasDoc.data(),
       shapes: updatedShapes,
       lastUpdated: serverTimestamp()
     });
-    console.log(`✅ canvas.js: Successfully updated shape ${shapeId} in Firebase`);
   } catch (error) {
     console.error('❌ canvas.js: Firebase update failed:', error);
     throw error;
@@ -495,10 +477,8 @@ export const updateShapePosition = async (canvasId, shapeId, x, y, userId) => {
 export const clearShapePosition = async (canvasId, shapeId) => {
   const positionRef = ref(rtdb, `positions/${canvasId}/${shapeId}`);
   
-  console.log(`🗑️ clearShapePosition called for shape ${shapeId}`);
   try {
     await remove(positionRef);
-    console.log(`✅ Real-time position removed from database for shape ${shapeId}`);
   } catch (error) {
     console.error('Error clearing real-time position:', error);
   }

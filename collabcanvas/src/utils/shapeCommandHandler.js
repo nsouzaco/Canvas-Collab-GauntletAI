@@ -136,14 +136,6 @@ export const calculatePosition = (position) => {
       x: finalX, 
       y: finalY 
     };
-    console.log('📍 No position provided, using EXACT manual-style random position (AI):', {
-      position: randomPos,
-      angle: SPREAD_ANGLE,
-      distance: SPREAD_DISTANCE,
-      extraRandom: { x: extraRandomX, y: extraRandomY },
-      manualCanvasWidth: MANUAL_CANVAS_WIDTH,
-      manualCanvasHeight: MANUAL_CANVAS_HEIGHT
-    });
     return randomPos;
   }
 

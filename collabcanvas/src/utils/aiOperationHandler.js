@@ -495,13 +495,10 @@ const handleCreateOperation = async (parsedCommand, operations, originalCommand 
   };
   
   // Handle shape-specific properties - let LLM determine the best defaults
-  console.log('🔧 Processing shape type:', type, 'with text:', text);
   
   if (type === 'text') {
-    console.log('🔧 Creating text shape');
     shapeData.text = handleTextContent(text);
   } else if (type === 'stickyNote' || type === 'sticky' || type === 'note') {
-    console.log('🔧 Creating sticky note shape');
     shapeData.text = text || 'Note';
     shapeData.width = 200;
     shapeData.height = 120;

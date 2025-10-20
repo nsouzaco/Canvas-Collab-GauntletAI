@@ -9,7 +9,7 @@ const PerformanceTester = () => {
   const [objectCount, setObjectCount] = useState(500);
   const [selectedPattern, setSelectedPattern] = useState('random');
   const fpsRef = useRef(null);
-  const { addShape, addShapeWithoutSelection, shapes, deleteShape, clearAllSelections, selectShape } = useCanvas();
+  const { addShape, addShapeWithoutSelection, shapes, deleteShape, deselectAll, selectShape } = useCanvas();
 
   const handleBulkCreate = async () => {
     setIsLoading(true);
@@ -72,21 +72,16 @@ const PerformanceTester = () => {
 
   const handleClearCanvas = async () => {
     if (!shapes || shapes.length === 0) {
-      console.log('Canvas is already empty');
       return;
     }
-
-    console.log(`🧹 Clearing ${shapes.length} objects from canvas...`);
     
     try {
       // Clear all selections first
-      await clearAllSelections();
+      await deselectAll();
       
       // Delete all shapes
       const deletePromises = shapes.map(shape => deleteShape(shape.id));
       await Promise.all(deletePromises);
-      
-      console.log(`✅ Cleared ${shapes.length} objects from canvas`);
       
       // Clear test results
       setTestResults(null);
