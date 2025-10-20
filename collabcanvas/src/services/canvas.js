@@ -263,12 +263,14 @@ export const createShapeWithoutSelection = async (canvasId, shapeData) => {
 
 // Update an existing shape
 export const updateShape = async (canvasId, shapeId, updates) => {
+  console.log(`🔥 canvas.js: updateShape called`, { canvasId, shapeId, updates });
+  
   const canvasRef = doc(db, 'canvases', canvasId);
   
   // First get current shapes
   const canvasDoc = await getDoc(canvasRef);
   if (!canvasDoc.exists()) {
-    console.error('Canvas document does not exist');
+    console.error('❌ canvas.js: Canvas document does not exist');
     return;
   }
   
@@ -277,13 +279,24 @@ export const updateShape = async (canvasId, shapeId, updates) => {
   
   if (!shapeToUpdate) {
     console.error(`❌ canvas.js: Shape ${shapeId} not found in current shapes`);
+    console.error(`Available shapes:`, currentShapes.map(s => ({ id: s.id, type: s.type })));
     return;
   }
+  
+  console.log(`📦 canvas.js: Shape before update`, { 
+    id: shapeToUpdate.id, 
+    type: shapeToUpdate.type,
+    text: shapeToUpdate.text,
+    title: shapeToUpdate.title,
+    content: shapeToUpdate.content
+  });
   
   // Filter out undefined values from updates to prevent Firebase errors
   const filteredUpdates = Object.fromEntries(
     Object.entries(updates).filter(([_, value]) => value !== undefined)
   );
+  
+  console.log(`🔧 canvas.js: Filtered updates`, filteredUpdates);
 
   const updatedShapes = currentShapes.map(shape => 
     shape.id === shapeId 
@@ -296,12 +309,22 @@ export const updateShape = async (canvasId, shapeId, updates) => {
       : shape
   );
   
+  const updatedShape = updatedShapes.find(s => s.id === shapeId);
+  console.log(`✨ canvas.js: Shape after update`, {
+    id: updatedShape.id,
+    type: updatedShape.type,
+    text: updatedShape.text,
+    title: updatedShape.title,
+    content: updatedShape.content
+  });
+  
   try {
     await setDoc(canvasRef, {
       ...canvasDoc.data(),
       shapes: updatedShapes,
       lastUpdated: serverTimestamp()
     });
+    console.log(`✅ canvas.js: Firebase update successful for shape ${shapeId}`);
   } catch (error) {
     console.error('❌ canvas.js: Firebase update failed:', error);
     throw error;

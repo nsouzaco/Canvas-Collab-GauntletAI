@@ -187,8 +187,11 @@ export const CanvasProvider = ({ children, canvasId }) => {
       setCanUndo(userOperations.length > 0);
       setCanRedo(false); // Redo is disabled for now
       
-      // Automatically select and lock the newly created shape
-      await selectShape(shapeId);
+      // Note: No need to call selectShape here because createShape in canvas.js
+      // already sets the shape as locked and selected. Calling selectShape 
+      // causes a race condition where updateShape might not find the shape yet.
+      // Just update local selectedId state to reflect the selection
+      setSelectedId(shapeId);
     }
     return shapeId;
   };
@@ -200,12 +203,31 @@ export const CanvasProvider = ({ children, canvasId }) => {
   };
 
   const updateShape = async (id, updates) => {
+    console.log(`🔄 CanvasContext: updateShape called`, { id, updates });
+    
     // Find the shape to get its current state
     const currentShape = shapes.find(s => s.id === id);
     if (!currentShape) {
-      console.error(`❌ CanvasContext: Shape ${id} not found`);
-      return;
+      console.error(`❌ CanvasContext: Shape ${id} not found in local shapes array`);
+      console.error(`Current shapes:`, shapes.map(s => ({ id: s.id, type: s.type })));
+      // Still attempt to update in Firebase in case it exists there
+      try {
+        await updateShapeInFirebase(id, updates);
+        console.log(`✅ Shape ${id} updated in Firebase despite not being in local state`);
+        return;
+      } catch (error) {
+        console.error(`❌ Failed to update shape ${id} in Firebase:`, error);
+        throw error;
+      }
     }
+    
+    console.log(`📦 CanvasContext: Current shape state`, { 
+      id, 
+      type: currentShape.type, 
+      currentText: currentShape.text,
+      currentTitle: currentShape.title,
+      currentContent: currentShape.content 
+    });
     
     // Save the previous state for undo (only include defined values)
     const previousState = {};
@@ -223,7 +245,9 @@ export const CanvasProvider = ({ children, canvasId }) => {
     // Save previous state for undo functionality
     
     try {
+      console.log(`🔥 CanvasContext: Calling updateShapeInFirebase`, { id, updates });
       await updateShapeInFirebase(id, updates);
+      console.log(`✅ CanvasContext: Shape ${id} updated successfully in Firebase`);
     } catch (error) {
       console.error(`❌ CanvasContext: Error updating shape ${id} in Firebase:`, error);
       throw error;
@@ -767,14 +791,31 @@ export const CanvasProvider = ({ children, canvasId }) => {
       const operations = {
         createShape: async (type, shapeData) => {
           const shapeId = await addShapeToFirebase(type, shapeData);
+          // Note: No need to call selectShape here because createShape in canvas.js
+          // already sets the shape as locked and selected. Calling selectShape 
+          // causes a race condition where updateShape might not find the shape yet.
           if (shapeId) {
-            // Automatically select and lock the newly created shape
-            await selectShape(shapeId);
+            // Just update local selectedId state to reflect the selection
+            setSelectedId(shapeId);
           }
           return shapeId;
         },
         moveShape: async (shapeId, x, y) => {
           console.log('🚀 operations.moveShape called with:', { shapeId, x, y });
+          
+          // Wait for shape to exist in local state (handle race condition)
+          let retries = 0;
+          const maxRetries = 10;
+          while (retries < maxRetries) {
+            const shapeExists = shapes.find(s => s.id === shapeId);
+            if (shapeExists) {
+              break;
+            }
+            // Wait 100ms before retrying
+            await new Promise(resolve => setTimeout(resolve, 100));
+            retries++;
+          }
+          
           const result = await updateShape(shapeId, { x, y });
           console.log('🚀 operations.moveShape updateShape result:', result);
           return result;
@@ -783,6 +824,19 @@ export const CanvasProvider = ({ children, canvasId }) => {
           return await deleteShape(shapeId);
         },
         resizeShape: async (shapeId, sizeData) => {
+          // Wait for shape to exist in local state (handle race condition)
+          let retries = 0;
+          const maxRetries = 10;
+          while (retries < maxRetries) {
+            const shapeExists = shapes.find(s => s.id === shapeId);
+            if (shapeExists) {
+              break;
+            }
+            // Wait 100ms before retrying
+            await new Promise(resolve => setTimeout(resolve, 100));
+            retries++;
+          }
+          
           return await updateShape(shapeId, sizeData);
         }
       };

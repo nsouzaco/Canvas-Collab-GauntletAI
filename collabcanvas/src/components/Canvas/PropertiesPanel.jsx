@@ -9,6 +9,7 @@ const PropertiesPanel = ({ selectedShape, onUpdateShape, onDeleteShape, onClose,
     items: []
   });
   const [hasChanges, setHasChanges] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Initialize local data when selectedShape changes
   useEffect(() => {
@@ -67,8 +68,9 @@ const PropertiesPanel = ({ selectedShape, onUpdateShape, onDeleteShape, onClose,
   };
 
   // Save changes
-  const handleSave = () => {
-    if (selectedShape && hasChanges) {
+  const handleSave = async () => {
+    if (selectedShape && hasChanges && !isSaving) {
+      setIsSaving(true);
       const updateData = {};
       
       // Update based on shape type
@@ -76,29 +78,32 @@ const PropertiesPanel = ({ selectedShape, onUpdateShape, onDeleteShape, onClose,
         updateData.text = localData.text;
       } else if (selectedShape.type === 'card') {
         updateData.title = localData.title;
-        if (localData.content) {
-          updateData.content = localData.content;
-        }
-        if (localData.items && localData.items.length > 0) {
-          updateData.items = localData.items;
-        }
+        updateData.content = localData.content || ''; // Always include content, even if empty
+        updateData.items = localData.items || []; // Always include items, even if empty
       } else if (selectedShape.type === 'list') {
         updateData.title = localData.title;
-        updateData.items = localData.items;
+        updateData.items = localData.items || [];
       }
 
-      onUpdateShape(selectedShape.id, updateData);
-      setHasChanges(false);
+      console.log('💾 PropertiesPanel: Saving changes', { shapeId: selectedShape.id, updateData });
       
-      // Close the panel after saving
-      onClose();
+      try {
+        await onUpdateShape(selectedShape.id, updateData);
+        console.log('✅ PropertiesPanel: Changes saved successfully');
+        setHasChanges(false);
+      } catch (error) {
+        console.error('❌ PropertiesPanel: Error saving changes', error);
+      } finally {
+        setIsSaving(false);
+      }
     }
   };
 
   // Auto-save on blur (for better UX)
-  const handleBlur = () => {
+  const handleBlur = async () => {
     if (hasChanges) {
-      handleSave();
+      console.log('📝 PropertiesPanel: Auto-saving on blur');
+      await handleSave();
     }
   };
 
@@ -246,20 +251,21 @@ const PropertiesPanel = ({ selectedShape, onUpdateShape, onDeleteShape, onClose,
 
       {/* Footer */}
       <div className="p-4 border-t border-gray-200 bg-gray-50 space-y-3">
-        {hasChanges && (
-          <button
-            onClick={handleSave}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-          >
-            <Save className="w-4 h-4" />
-            Save Changes
-          </button>
-        )}
+        <button
+          onClick={handleSave}
+          disabled={!hasChanges || isSaving}
+          className={`w-full flex items-center justify-center gap-2 px-4 py-2 rounded-md transition-colors ${
+            hasChanges && !isSaving
+              ? 'bg-blue-600 text-white hover:bg-blue-700' 
+              : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+          }`}
+        >
+          <Save className={`w-4 h-4 ${isSaving ? 'animate-spin' : ''}`} />
+          {isSaving ? 'Saving...' : hasChanges ? 'Save Changes' : 'No Changes'}
+        </button>
         
         {/* Separator */}
-        {hasChanges && (
-          <div className="border-t border-gray-300"></div>
-        )}
+        <div className="border-t border-gray-300"></div>
         
         {/* Delete Button */}
         <button

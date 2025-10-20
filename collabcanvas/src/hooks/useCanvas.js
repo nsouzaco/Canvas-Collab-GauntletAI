@@ -390,15 +390,22 @@ export const useCanvas = (canvasId) => {
 
   // Update an existing shape
   const updateShapeData = useCallback(async (id, updates) => {
-    if (!currentUser || !canvasId) return;
+    if (!currentUser || !canvasId) {
+      console.error('❌ useCanvas: Cannot update shape - missing currentUser or canvasId');
+      return;
+    }
+
+    console.log(`🎨 useCanvas: updateShapeData called`, { id, updates, currentUser: currentUser.uid });
 
     try {
       await updateShape(canvasId, id, {
         ...updates,
         lastModifiedBy: currentUser.uid
       });
+      console.log(`✅ useCanvas: Shape ${id} updated successfully`);
     } catch (error) {
       console.error(`❌ useCanvas: Error updating shape ${id}:`, error);
+      throw error;
     }
   }, [currentUser, canvasId]);
 

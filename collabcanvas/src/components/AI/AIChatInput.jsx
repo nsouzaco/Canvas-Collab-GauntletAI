@@ -225,6 +225,69 @@ const AIChatInput = ({ onShapeCreate, isVisible, onToggle, canvasMetadata = { na
         </button>
       </form>
 
+      {/* Quick Commands */}
+      <div className="mt-4 pt-4 border-t border-gray-100">
+        <p className="text-xs font-medium text-gray-500 mb-2">Quick Commands</p>
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => handleSuggestionClick('Create a persona card')}
+            disabled={isLoading}
+            className="px-3 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 text-xs rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            🎭 Persona
+          </button>
+          <button
+            onClick={() => handleSuggestionClick('Add feature cards')}
+            disabled={isLoading}
+            className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            ⭐ Features
+          </button>
+          <button
+            onClick={() => handleSuggestionClick('Create user story card')}
+            disabled={isLoading}
+            className="px-3 py-1.5 bg-green-50 hover:bg-green-100 text-green-700 text-xs rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            📖 User Story
+          </button>
+          <button
+            onClick={() => handleSuggestionClick('Add pain points')}
+            disabled={isLoading}
+            className="px-3 py-1.5 bg-orange-50 hover:bg-orange-100 text-orange-700 text-xs rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            ⚠️ Pain Points
+          </button>
+          <button
+            onClick={() => handleSuggestionClick('Create red circle')}
+            disabled={isLoading}
+            className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 text-xs rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            🔴 Circle
+          </button>
+          <button
+            onClick={() => handleSuggestionClick('Create blue rectangle')}
+            disabled={isLoading}
+            className="px-3 py-1.5 bg-sky-50 hover:bg-sky-100 text-sky-700 text-xs rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            🟦 Rectangle
+          </button>
+          <button
+            onClick={() => handleSuggestionClick('Add sticky note')}
+            disabled={isLoading}
+            className="px-3 py-1.5 bg-yellow-50 hover:bg-yellow-100 text-yellow-700 text-xs rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            📝 Note
+          </button>
+          <button
+            onClick={() => handleSuggestionClick('Create todo list')}
+            disabled={isLoading}
+            className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            ✅ Todo List
+          </button>
+        </div>
+      </div>
+
     </div>
   );
 };
