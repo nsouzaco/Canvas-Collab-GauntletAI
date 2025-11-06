@@ -619,13 +619,13 @@ const Shape = ({
           />
         )}
 
-        {/* Card Content - Text */}
-        {shape.type === "card" && shape.content && !shape.items && (
+        {/* Card Content - Text (always show if content exists, but adjust height if items present) */}
+        {shape.type === "card" && shape.content && (
           <Text
             x={15}
             y={50}
             width={shape.width - 30}
-            height={shape.height - 70}
+            height={shape.items && shape.items.length > 0 ? 40 : shape.height - 70}
             text={shape.content || "This is a card with some content. You can edit this text by double-clicking."}
             fontSize={14}
             fontFamily="Inter, system-ui, sans-serif"
@@ -722,26 +722,6 @@ const Shape = ({
               listening={false}
             />
           </Group>
-        )}
-
-        {/* Card Content - Both text and items */}
-        {shape.type === "card" && shape.content && shape.items && shape.items.length > 0 && (
-          <Text
-            x={15}
-            y={50}
-            width={shape.width - 30}
-            height={30}
-            text={shape.content}
-            fontSize={14}
-            fontFamily="Inter, system-ui, sans-serif"
-            fill="#4B5563"
-            align="left"
-            verticalAlign="top"
-            wrap="word"
-            ellipsis={false}
-            onDblClick={handleDoubleClick}
-            onDblTap={handleDoubleClick}
-          />
         )}
 
         {/* List Shape */}

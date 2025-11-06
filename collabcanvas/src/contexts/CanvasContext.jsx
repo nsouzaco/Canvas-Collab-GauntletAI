@@ -4,6 +4,7 @@ import { useAuth } from './AuthContext';
 import { processAIOperation, validateAICommand } from '../utils/aiOperationHandler';
 import { HistoryManager, createStateSnapshot, applyStateSnapshot } from '../utils/historyManager';
 import { getCanvas } from '../services/canvas';
+import { executeAIOperation as executeAIWithAdapter } from '../services/ai/adapter';
 
 const CanvasContext = createContext();
 
@@ -841,8 +842,22 @@ export const CanvasProvider = ({ children, canvasId }) => {
         }
       };
 
-      // Process the AI operation - LLM handles text extraction intelligently
-      const result = await processAIOperation(parsedCommand, shapes, operations, originalCommand, canvasMetadata, conversationHistory);
+      // Use the adapter to route between old and new AI systems
+      // Feature flag VITE_USE_LANGCHAIN_AI determines which system to use
+      const result = await executeAIWithAdapter({
+        // For new LangChain system
+        command: originalCommand,
+        canvasId,
+        userId: currentUser?.uid,
+        // For legacy OpenAI system (backward compatibility)
+        parsedCommand,
+        originalCommand,
+        conversationHistory,
+        shapes,
+        canvasMetadata,
+        // Operations (used by both systems)
+        operations
+      });
       
       return result;
     } catch (error) {

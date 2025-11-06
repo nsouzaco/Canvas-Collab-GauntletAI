@@ -4,7 +4,7 @@
   "description": "Real-time collaborative canvas application",
   "scripts": {
     "dev": "cd collabcanvas && npm run dev",
-    "build": "cd collabcanvas && npm run build",
+    "build": "cd collabcanvas && npm run build && cd .. && rm -rf dist && cp -r collabcanvas/dist dist",
     "preview": "cd collabcanvas && npm run preview",
     "install-deps": "cd collabcanvas && npm install"
   },
